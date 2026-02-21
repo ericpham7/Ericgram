@@ -1,7 +1,7 @@
-// ============================================
-// APP COMPONENT — The root of the entire application
-// This decides: show LoginPage OR show the main app (Navbar + Feed)
-// ============================================
+// ====== 
+// APP CO cation
+// This d n app (Navbar + Feed)
+// ====== 
 
 // useState = a React "hook" that lets a component remember values between renders
 // When you call setUser(), React re-renders this component with the new value
