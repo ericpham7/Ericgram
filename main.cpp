@@ -66,7 +66,7 @@ string jsonEscape(const string &value) {
     default:
       if (c < 0x20) {
         char buffer[7];
-        snprintf(bufferud, sizeof(buffer), "\\u%04x", c);
+        snprintf(buffer, sizeof(buffer), "\\u%04x", c);
         out += buffer;
       } else {
         out += static_cast<char>(c);
