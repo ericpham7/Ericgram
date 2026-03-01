@@ -1,84 +1,108 @@
-/* ============================================
-   ERICGRAM DESIGN SYSTEM
-   Premium dark theme social media UI
-   ============================================ */
+/* ============================================================
+   ERICGRAM — Instagram-faithful design system
+   ============================================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ─── Legacy variable aliases (for LoginPage.css) ─── */
 :root {
-  /* Color Palette */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #12121a;
-  --bg-card: #16161f;
-  --bg-elevated: #1c1c28;
-  --bg-hover: #22222f;
-  --bg-input: #1a1a25;
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-full: var(--r-full);
 
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  --font-sans: var(--font);
+  --font-display: var(--font);
 
-  --text-primary: #f0f0f5;
-  --text-secondary: #9595a8;
-  --text-tertiary: #5e5e72;
-  --text-inverse: #0a0a0f;
+  --accent: var(--ig-accent);
+  --accent-hover: var(--ig-accent-hover);
+  --accent-muted: var(--ig-accent-light);
+  --accent-red: #ff453a;
+  --accent-green: #30d158;
 
-  --accent-purple: #8B5CF6;
-  --accent-pink: #EC4899;
-  --accent-blue: #3B82F6;
-  --accent-green: #10B981;
-  --accent-orange: #F59E0B;
-  --accent-red: #EF4444;
+  --text-primary: var(--ig-text-primary);
+  --text-secondary: var(--ig-text-secondary);
+  --text-tertiary: var(--ig-text-tertiary);
 
-  --gradient-primary: linear-gradient(135deg, #8B5CF6, #EC4899);
-  --gradient-subtle: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.15));
-  --gradient-card: linear-gradient(180deg, rgba(139, 92, 246, 0.05) 0%, transparent 100%);
+  --bg-primary: var(--ig-bg);
+  --bg-secondary: var(--ig-surface);
+  --bg-elevated: var(--ig-elevated);
 
-  /* Glass */
-  --glass-bg: rgba(22, 22, 31, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.35);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.15);
-
-  /* Typography */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 9999px;
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: 500ms cubic-bezier(0.68, -0.6, 0.32, 1.6);
+  --transition-fast: var(--t-fast);
+  --transition-base: var(--t-base);
+  --transition-slow: var(--t-slow);
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Reset */
-*,
-*::before,
-*::after {
+:root {
+  /* Instagram's exact color palette */
+  --ig-bg: #000000;
+  --ig-surface: #000000;
+  --ig-elevated: #121212;
+  --ig-border: #262626;
+  --ig-border-hover: #363636;
+
+  --ig-text-primary: #f5f5f5;
+  --ig-text-secondary: #a8a8a8;
+  --ig-text-tertiary: #737373;
+
+  /* Instagram blue */
+  --ig-accent: #0095f6;
+  --ig-accent-hover: #1877f2;
+  --ig-accent-light: rgba(0, 149, 246, 0.15);
+
+  /* Instagram gradient (stories, avatars) */
+  --ig-gradient: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
+  --ig-gradient-h: linear-gradient(90deg, #f9ce34, #ee2a7b, #6228d7);
+
+  /* Typography */
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Helvetica, sans-serif;
+
+  /* Radii */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-full: 9999px;
+
+  /* Transitions */
+  --t-fast: 0.15s ease;
+  --t-base: 0.2s ease;
+  --t-slow: 0.3s ease;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+
+  /* Sidebar width */
+  --sidebar-width: 244px;
+  --sidebar-collapsed-width: 72px;
+}
+
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
 html {
-  font-size: 16px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  line-height: 1.6;
+  font-family: var(--font);
+  background: var(--ig-bg);
+  color: var(--ig-text-primary);
+  line-height: 1.5;
   min-height: 100vh;
 }
 
@@ -87,93 +111,86 @@ body {
 }
 
 a {
-  color: var(--accent-purple);
+  color: inherit;
   text-decoration: none;
-  transition: color var(--transition-fast);
 }
 
-a:hover {
-  color: var(--accent-pink);
+button {
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+input, textarea {
+  font-family: var(--font);
+}
+
+img, video {
+  display: block;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-full);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
-}
+::-webkit-scrollbar { width: 0px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ig-border); border-radius: var(--r-full); }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
-  50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.4); }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
+@keyframes heartBeat {
+  0%   { transform: scale(1); }
+  15%  { transform: scale(1.35); }
+  30%  { transform: scale(1); }
+  45%  { transform: scale(1.2); }
+  60%  { transform: scale(1); }
+}
+@keyframes shimmer {
+  0%   { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+@keyframes storyGlow {
+  0%, 100% { box-shadow: 0 0 0 3px #f9ce34, 0 0 0 5px #ee2a7b; }
+  50%       { box-shadow: 0 0 0 3px #ee2a7b, 0 0 0 5px #6228d7; }
 }
 
-.animate-slide-up {
-  animation: slideUp 0.6s ease-out forwards;
+.animate-fade-in   { animation: fadeIn 0.25s ease-out forwards; }
+.animate-slide-up  { animation: slideUp 0.3s ease-out forwards; }
+.animate-scale-in  { animation: scaleIn 0.2s ease-out forwards; }
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, var(--ig-elevated) 25%, var(--ig-border) 50%, var(--ig-elevated) 75%);
+  background-size: 468px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm);
 }
 
-/* Utility classes */
-.gradient-text {
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* App loading screen */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #000;
 }
 
-.glass {
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
+.ig-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--ig-border);
+  border-top-color: var(--ig-text-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }

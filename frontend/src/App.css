@@ -1,4 +1,20 @@
+/* App-level layout — sidebar + content */
 .app {
+  display: flex;
   min-height: 100vh;
-  background: var(--bg-primary);
+  background: var(--ig-bg);
+}
+
+/* Loading state */
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #000;
+}
+
+/* Remove old route-tabs nav */
+.app-route-tabs {
+  display: none;
 }

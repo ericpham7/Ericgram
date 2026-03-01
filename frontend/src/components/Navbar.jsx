@@ -1,194 +1,368 @@
-// ============================================
-// NAVBAR COMPONENT
-// The top navigation bar shown after login.
-// Displays the logo, a search bar, and a user dropdown menu.
-// ============================================
-
-// useState = React hook to track whether the dropdown menu is open or closed
-import { useState } from "react";
-
-// Import the logo image — becomes a URL string you can use in <img src={logo}>
-import logo from "../assets/logo.png";
-
-// Import styles specific to the Navbar
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./Navbar.css";
 
-// "export default function Navbar({ user, onLogout })" =
-//   → Receives two props from App.jsx:
-//     user = the logged-in user object { userName, name, email, friendsCount }
-//     onLogout = function to call when user clicks "Log Out" → sets user to null in App.jsx
-// Props from App.jsx:
-//   user = logged-in user object
-//   onLogout = function to log out
-//   searchQuery = current search text (lives in App.jsx)
-//   setSearchQuery = function to update search text (lives in App.jsx)
-export default function Navbar({
-  user,
-  onLogout,
-  searchQuery,
-  setSearchQuery,
-}) {
-  // menuOpen tracks whether the dropdown menu is visible
-  //   false = hidden, true = visible
-  const [menuOpen, setMenuOpen] = useState(false);
+function Avatar({ user, size = 26 }) {
+  const initials = (user?.name || user?.userName || "U")
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  if (user?.profilePic) {
+    return (
+      <img
+        src={user.profilePic}
+        alt={user?.name}
+        style={{
+          width: size, height: size,
+          borderRadius: "50%", objectFit: "cover", display: "block"
+        }}
+      />
+    );
+  }
+  return (
+    <div style={{
+      width: size, height: size,
+      borderRadius: "50%", background: "#333",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.38, fontWeight: 700, color: "#fff"
+    }}>
+      {initials}
+    </div>
+  );
+}
+
+export default function Navbar({ user, onLogout, searchQuery, setSearchQuery, onUpdateUser }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.name || "");
+  const [profilePicDraft, setProfilePicDraft] = useState(user?.profilePic || "");
+  const [settingsMsg, setSettingsMsg] = useState("");
+  const [settingsError, setSettingsError] = useState(false);
+  const moreRef = useRef(null);
+  const profilePicInputRef = useRef(null);
+
+  useEffect(() => {
+    setDisplayName(user?.name || "");
+    setProfilePicDraft(user?.profilePic || "");
+  }, [user?.name, user?.profilePic]);
+
+  // Close more menu on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Sync search text up to App
+  useEffect(() => {
+    if (setSearchQuery) setSearchQuery(searchText);
+  }, [searchText]);
+
+  const currentPath = location.pathname;
+
+  const navItems = [
+    {
+      id: "home", label: "Home", path: "/",
+      icon: (active) => (
+        <svg viewBox="0 0 24 24">
+          <path
+            d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
+            fill={active ? "currentColor" : "none"}
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "search", label: "Search", action: () => {
+        setSearchOpen((p) => !p);
+        setMoreOpen(false);
+      },
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      ),
+    },
+    {
+      id: "explore", label: "Explore", path: "/explore",
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11" />
+        </svg>
+      ),
+    },
+    {
+      id: "reels", label: "Reels", path: "/",
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="2" width="20" height="20" rx="5" />
+          <path d="M9 2v20" /><path d="M2 9h20" />
+          <path d="M15 2l-4 7" /><path d="M2 15l7-4" />
+        </svg>
+      ),
+    },
+    {
+      id: "messages", label: "Messages", path: "/people",
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      ),
+    },
+    {
+      id: "notifications", label: "Notifications", action: () => {},
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+      ),
+    },
+    {
+      id: "create", label: "Create", action: () => { navigate("/people"); },
+      icon: () => (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          <rect x="3" y="3" width="18" height="18" rx="4" />
+          <line x1="12" y1="8" x2="12" y2="16" />
+          <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      ),
+    },
+    {
+      id: "profile", label: "Profile", path: "/people",
+      icon: null, // uses avatar
+    },
+  ];
+
+  const handleNavClick = (item) => {
+    if (item.action) {
+      item.action();
+    } else if (item.path) {
+      navigate(item.path);
+      setSearchOpen(false);
+    }
+    setMoreOpen(false);
+  };
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    const trimmed = displayName.trim();
+    if (!trimmed) {
+      setSettingsError(true);
+      setSettingsMsg("Display name can't be empty.");
+      return;
+    }
+    onUpdateUser?.({ ...user, name: trimmed, profilePic: profilePicDraft });
+    setSettingsError(false);
+    setSettingsMsg("Saved successfully!");
+  };
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setProfilePicDraft(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const isActive = (item) => {
+    if (!item.path) return false;
+    if (item.path === "/") return currentPath === "/";
+    return currentPath.startsWith(item.path);
+  };
 
   return (
-    // "glass" class = CSS glassmorphism effect (semi-transparent with blur)
-    <nav className="navbar glass" id="navbar">
-      <div className="navbar-inner">
-        {/* ====== BRAND / LOGO ====== */}
-        <div className="navbar-brand" id="navbar-brand">
-          <img src={logo} alt="EricGram" className="navbar-logo" />
-          {/* "gradient-text" = CSS class that applies a gradient color to the text */}
-          <span className="navbar-title gradient-text">EricGram</span>
+    <>
+      <nav className={`ig-sidebar${searchOpen ? " collapsed" : ""}`}>
+        {/* Logo */}
+        <div className="ig-sidebar-logo">
+          <span className="ig-sidebar-logo-text">EricGram</span>
+          <span className="ig-sidebar-logo-icon">📸</span>
         </div>
 
-        {/* ====== SEARCH BAR (decorative — not functional yet) ====== */}
-        <div className="navbar-search" id="navbar-search">
-          {/* Magnifying glass search icon (SVG) */}
-          {/* SVG attributes in React use camelCase: strokeLinecap instead of stroke-linecap */}
-          <svg
-            className="search-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search EricGram..."
-            className="search-input"
-            id="search-input"
-            value={searchQuery} // CONTROLLED INPUT: displays whatever searchQuery contains
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-
-        {/* ====== USER DROPDOWN MENU ====== */}
-        <div className="navbar-user" id="navbar-user">
-          {/* CLICKABLE AREA — toggles the dropdown open/closed */}
-          <div
-            className="user-avatar-btn"
-            // () => setMenuOpen(!menuOpen)
-            //   → "!" flips the boolean — if menu is open, close it; if closed, open it
-            onClick={() => setMenuOpen(!menuOpen)}
-            id="user-menu-toggle"
-          >
-            {/* Avatar circle with the user's first initial */}
-            <div className="avatar-circle">
-              {/* user?.name?.charAt(0)?.toUpperCase() chains: */}
-              {/*   1. user?.name — get the name (e.g., "Eric Pham"), null if undefined */}
-              {/*   2. ?.charAt(0) — get first character (e.g., "E") */}
-              {/*   3. ?.toUpperCase() — make it uppercase */}
-              {/*   || "U" — fallback to "U" if anything in the chain is null */}
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
-            </div>
-
-            {/* Display the user's full name next to the avatar */}
-            <span className="user-display-name">{user?.name || "User"}</span>
-
-            {/* Chevron (down arrow) — rotates when menu opens */}
-            <svg
-              // Template literal in className:
-              // `chevron ${menuOpen ? "open" : ""}` →
-              //   "chevron open" when menu is open (CSS rotates it 180°)
-              //   "chevron" when menu is closed
-              className={`chevron ${menuOpen ? "open" : ""}`}
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </div>
-
-          {/* DROPDOWN MENU — only rendered when menuOpen is true */}
-          {/* {menuOpen && (...)} = conditional rendering using logical AND */}
-          {menuOpen && (
-            <div className="dropdown-menu animate-fade-in" id="user-dropdown">
-              {/* Dropdown header — shows avatar + name + email */}
-              <div className="dropdown-header">
-                <div className="avatar-circle large">
-                  {user?.name?.charAt(0)?.toUpperCase() || "U"}
+        {/* Nav items */}
+        <div className="ig-sidebar-nav">
+          {navItems.map((item) => {
+            const active = isActive(item) || (item.id === "search" && searchOpen);
+            return (
+              <button
+                key={item.id}
+                className={`ig-nav-item${active ? " active" : ""}`}
+                data-nav={item.id}
+                onClick={() => handleNavClick(item)}
+                title={item.label}
+              >
+                <div className="ig-nav-item-icon">
+                  {item.id === "profile" ? (
+                    <Avatar user={user} size={26} />
+                  ) : (
+                    item.icon(active)
+                  )}
                 </div>
-                <div>
-                  <p className="dropdown-name">{user?.name}</p>
-                  <p className="dropdown-email">{user?.email}</p>
-                </div>
-              </div>
-
-              {/* Visual separator line */}
-              <div className="dropdown-divider" />
-
-              {/* Profile button (not wired up yet — placeholder) */}
-              <button className="dropdown-item" id="profile-btn">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-                Profile
+                <span className="ig-nav-item-label">{item.label}</span>
               </button>
+            );
+          })}
+        </div>
 
-              {/* Settings button (not wired up yet — placeholder) */}
-              <button className="dropdown-item" id="settings-btn">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+        {/* Bottom - More */}
+        <div className="ig-sidebar-bottom" ref={moreRef}>
+          <button
+            className="ig-nav-item"
+            onClick={() => setMoreOpen((p) => !p)}
+            title="More"
+          >
+            <div className="ig-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </div>
+            <span className="ig-nav-item-label">More</span>
+          </button>
+
+          {moreOpen && (
+            <div className="ig-more-menu">
+              <button className="ig-more-menu-item" onClick={() => { setSettingsOpen(true); setMoreOpen(false); }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round">
                   <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06A2 2 0 0 1 17 19.4a2 2 0 0 1-.06-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H15a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 16.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 21 4.68V4.5A2 2 0 0 1 19.5 2.5h-.09a1.65 1.65 0 0 0-1.51 1A1.65 1.65 0 0 0 16.6 5a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 0 1-2.83-2.83" />
                 </svg>
                 Settings
               </button>
-
-              <div className="dropdown-divider" />
-
-              {/* LOGOUT BUTTON — onClick={onLogout} calls the function from App.jsx */}
-              {/* This sets user to null → App re-renders → shows LoginPage again */}
-              <button
-                className="dropdown-item logout"
-                onClick={onLogout}
-                id="logout-btn"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
+              <div className="ig-more-menu-divider" />
+              <button className="ig-more-menu-item danger" onClick={() => { setMoreOpen(false); onLogout?.(); }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                   <polyline points="16 17 21 12 16 7" />
                   <line x1="21" y1="12" x2="9" y2="12" />
                 </svg>
-                Log Out
+                Log out
               </button>
             </div>
           )}
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Search panel */}
+      {searchOpen && (
+        <div className="ig-search-panel">
+          <h2 className="ig-search-panel-title">Search</h2>
+          <div className="ig-search-input-wrap">
+            <input
+              id="search-input"
+              className="ig-search-field-input"
+              type="text"
+              placeholder="Search"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              autoFocus
+            />
+            {searchText && (
+              <button className="ig-search-clear" onClick={() => setSearchText("")}>×</button>
+            )}
+          </div>
+          {searchText ? (
+            <div style={{ color: "var(--ig-text-secondary)", fontSize: 14, padding: "8px 4px" }}>
+              Search results for "{searchText}"...
+            </div>
+          ) : (
+            <div style={{ color: "var(--ig-text-secondary)", fontSize: 14, padding: "8px 4px" }}>
+              No recent searches.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <div className="ig-settings-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="ig-settings-modal animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="ig-settings-header">
+              <h2>Edit profile</h2>
+              <button className="ig-settings-close" onClick={() => setSettingsOpen(false)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSettings}>
+              <div className="ig-settings-body">
+                {/* Avatar row */}
+                <div className="ig-settings-photo-row">
+                  <div className="ig-settings-avatar">
+                    {profilePicDraft ? (
+                      <img src={profilePicDraft} alt="preview" />
+                    ) : (
+                      (displayName || "U")[0].toUpperCase()
+                    )}
+                  </div>
+                  <div className="ig-settings-photo-btns">
+                    <p style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{user?.userName}</p>
+                    <button
+                      type="button"
+                      className="ig-settings-upload-btn"
+                      onClick={() => profilePicInputRef.current?.click()}
+                    >
+                      Change profile photo
+                    </button>
+                    {profilePicDraft && (
+                      <button type="button" className="ig-settings-remove-btn" onClick={() => setProfilePicDraft("")}>
+                        Remove photo
+                      </button>
+                    )}
+                    <input ref={profilePicInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleProfilePicChange} />
+                  </div>
+                </div>
+
+                {/* Name field */}
+                <div className="ig-settings-field">
+                  <label className="ig-settings-label">Name</label>
+                  <input
+                    className="ig-settings-input"
+                    type="text"
+                    value={displayName}
+                    maxLength={50}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+
+                {settingsMsg && (
+                  <div className={`ig-settings-message${settingsError ? " error" : ""}`}>
+                    {settingsMsg}
+                  </div>
+                )}
+              </div>
+
+              <div className="ig-settings-actions">
+                <button type="button" className="ig-btn ig-btn-secondary" onClick={() => setSettingsOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="ig-btn ig-btn-primary">
+                  Submit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
