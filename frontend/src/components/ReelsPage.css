@@ -1,7 +1,8 @@
 .ig-reels-page {
 	margin-left: var(--sidebar-width);
-	width: calc(100vw - var(--sidebar-width));
 	min-height: 100vh;
+	min-height: 100dvh;
+	min-width: 0;
 	background:
 		radial-gradient(circle at 50% 50%, rgba(32, 43, 66, 0.5), transparent 28%),
 		linear-gradient(180deg, #02060b 0%, #06111b 100%);
@@ -12,15 +13,17 @@
 
 .ig-reels-stage {
 	min-height: 100vh;
+	min-height: 100dvh;
 	display: grid;
-	grid-template-columns: minmax(360px, 1fr) minmax(88px, 11vw);
+	grid-template-columns: minmax(0, 1fr) minmax(72px, 11vw);
 	align-items: center;
 	gap: 16px;
-	padding: 0 20px;
+	padding: clamp(12px, 2vw, 20px);
 }
 
 .ig-reels-side-rail {
 	height: 100vh;
+	height: 100dvh;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -387,7 +390,6 @@
 @media (max-width: 1264px) {
 	.ig-reels-page {
 		margin-left: var(--sidebar-collapsed-width);
-		width: calc(100vw - var(--sidebar-collapsed-width));
 	}
 
 	.ig-reels-stage {
@@ -399,7 +401,6 @@
 @media (max-width: 768px) {
 	.ig-reels-page {
 		margin-left: 0;
-		width: 100vw;
 	}
 
 	.ig-reels-stage {

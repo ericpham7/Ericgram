@@ -97,7 +97,7 @@ function App() {
 		setUser(u);
 		setRole(authPayload?.role || "user");
 		setCurrentUser(u?.userName || ""); // ← register for X-Auth-User
-		navigate("/");
+		navigate("/explore");
 	};
 
 	const handleLogout = async () => {
@@ -137,7 +137,7 @@ function App() {
 					element={
 						!user ?
 							<LoginPage onLogin={handleLogin} />
-						:	<Navigate to="/" replace />
+						:	<Navigate to="/explore" replace />
 					}
 				/>
 

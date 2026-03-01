@@ -1,8 +1,12 @@
 /* ── Messages Page ─────────────────────────────────────────────── */
 .ig-messages-page {
   margin-left: var(--sidebar-width);
-  width: calc(100vw - var(--sidebar-width));
+  width: auto;
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   display: flex;
   background: var(--ig-bg);
   border-left: 1px solid var(--ig-border);
@@ -14,21 +18,19 @@
 @media (max-width: 1264px) {
   .ig-messages-page {
     margin-left: var(--sidebar-collapsed-width);
-    width: calc(100vw - var(--sidebar-collapsed-width));
   }
 }
 @media (max-width: 768px)  {
   .ig-messages-page {
     margin-left: 0;
-    width: 100vw;
     flex-direction: column;
-    height: calc(100vh - 56px);
+    height: calc(100dvh - 56px);
   }
 }
 
 /* Sidebar */
 .ig-dm-sidebar {
-  width: 360px;
+  width: min(360px, 100%);
   flex-shrink: 0;
   border-right: 1px solid var(--ig-border);
   display: flex;
@@ -36,7 +38,7 @@
   overflow: hidden;
 }
 
-@media (max-width: 768px) { .ig-dm-sidebar { width: 100%; max-height: 200px; } }
+@media (max-width: 768px) { .ig-dm-sidebar { width: 100%; max-height: min(240px, 40dvh); } }
 
 .ig-dm-sidebar-header {
   display: flex;

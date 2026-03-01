@@ -6,7 +6,8 @@
 .ig-home-page {
   margin-left: var(--sidebar-width);
   min-height: 100vh;
-  width: calc(100vw - var(--sidebar-width));
+  min-height: 100dvh;
+  min-width: 0;
   background: transparent;
   padding: 0;
   transition: margin-left var(--t-slow), width var(--t-slow);
@@ -23,7 +24,7 @@
   grid-template-columns: minmax(0, 720px) 320px;
   justify-content: center;
   gap: 72px;
-  padding: 34px 44px 72px;
+  padding: clamp(16px, 2.4vw, 34px) clamp(16px, 3vw, 44px) 72px;
   align-items: start;
   box-sizing: border-box;
 }
@@ -34,12 +35,11 @@
 @media (max-width: 1264px) {
   .ig-home-page {
     margin-left: var(--sidebar-collapsed-width);
-    width: calc(100vw - var(--sidebar-collapsed-width));
   }
   .ig-home-shell {
     max-width: 100%;
     gap: 24px;
-    padding: 24px 20px 60px;
+    padding: clamp(16px, 2.2vw, 24px) clamp(12px, 2vw, 20px) 60px;
   }
 }
 
@@ -57,7 +57,6 @@
 @media (max-width: 768px) {
   .ig-home-page {
     margin-left: 0;
-    width: 100vw;
     padding-bottom: 72px;
   }
   .ig-home-shell {

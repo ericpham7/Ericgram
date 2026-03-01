@@ -2,6 +2,8 @@
 .app {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
   background: var(--ig-bg);
 }
 
@@ -11,6 +13,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   background: #000;
 }
 
@@ -22,8 +25,9 @@
 /* Generic placeholder pages (Notifications, etc.) */
 .ig-placeholder-page {
   margin-left: var(--sidebar-width);
-  width: calc(100vw - var(--sidebar-width));
   min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
   background: var(--ig-bg);
   display: flex;
   align-items: center;
@@ -81,15 +85,13 @@
 @media (max-width: 1264px) {
   .ig-placeholder-page {
     margin-left: var(--sidebar-collapsed-width);
-    width: calc(100vw - var(--sidebar-collapsed-width));
   }
 }
 
 @media (max-width: 768px) {
   .ig-placeholder-page {
     margin-left: 0;
-    width: 100vw;
-    min-height: calc(100vh - 56px);
+    min-height: calc(100dvh - 56px);
     padding: 24px 16px 88px;
   }
 

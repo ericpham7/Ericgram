@@ -1,8 +1,9 @@
 /* ── Profile Page ───────────────────────────────────────────── */
 .ig-profile-page {
   margin-left: var(--sidebar-width);
-  width: calc(100vw - var(--sidebar-width));
   min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
   background: var(--ig-bg);
   padding: 0 clamp(20px, 4vw, 56px) 60px;
   box-sizing: border-box;
@@ -12,13 +13,11 @@
 @media (max-width: 1264px) {
   .ig-profile-page {
     margin-left: var(--sidebar-collapsed-width);
-    width: calc(100vw - var(--sidebar-collapsed-width));
   }
 }
 @media (max-width: 768px) {
   .ig-profile-page {
     margin-left: 0;
-    width: 100vw;
     padding: 0 16px 72px;
   }
 }

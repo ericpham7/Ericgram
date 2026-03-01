@@ -96,6 +96,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -106,6 +108,7 @@ body {
   color: var(--ig-text-primary);
   line-height: 1.5;
   min-height: 100vh;
+  min-height: 100dvh;
   /* Prevent horizontal overflow causing a black bar on the right */
   overflow-x: hidden;
   width: 100%;
@@ -113,6 +116,8 @@ body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
 }
 
 a {
