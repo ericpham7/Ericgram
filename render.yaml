@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ericgram
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: STATIC_DIR
+        value: /app/frontend/dist
+      - key: ERICGRAM_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: FRONTEND_BASE_URL
+        sync: false
+      - key: IG_TOKEN_ENC_KEY
+        generateValue: true
