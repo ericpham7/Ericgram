@@ -4,14 +4,20 @@
 #include <cctype>
 #include <chrono>
 #include <condition_variable>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
+#include <filesystem>
 #include <functional>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 #include <optional>
 #include <random>
 #include <regex>
@@ -22,10 +28,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
 
 using namespace std;
 
@@ -158,9 +160,7 @@ bool getEnvBool(const string &key, bool fallback) {
   return raw == "1" || raw == "true" || raw == "yes" || raw == "on";
 }
 
-long long nowUnixSeconds() {
-  return static_cast<long long>(time(nullptr));
-}
+long long nowUnixSeconds() { return static_cast<long long>(time(nullptr)); }
 
 string toHex(const unsigned char *data, size_t length) {
   static const char *digits = "0123456789abcdef";
@@ -181,9 +181,12 @@ vector<unsigned char> fromHex(const string &hex) {
   }
   out.reserve(hex.size() / 2);
   auto hexVal = [](char c) -> int {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
-    if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+    if (c >= '0' && c <= '9')
+      return c - '0';
+    if (c >= 'a' && c <= 'f')
+      return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F')
+      return 10 + (c - 'A');
     return -1;
   };
 
@@ -294,9 +297,12 @@ string urlDecode(const string &value) {
       char h1 = value[i + 1];
       char h2 = value[i + 2];
       auto hexVal = [](char c) -> int {
-        if (c >= '0' && c <= '9') return c - '0';
-        if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
-        if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+        if (c >= '0' && c <= '9')
+          return c - '0';
+        if (c >= 'a' && c <= 'f')
+          return 10 + (c - 'a');
+        if (c >= 'A' && c <= 'F')
+          return 10 + (c - 'A');
         return -1;
       };
       int hi = hexVal(h1);
@@ -400,7 +406,8 @@ optional<long long> extractJSONInt(const string &json, const string &key) {
   }
 }
 
-vector<string> extractAllJSONFieldValues(const string &json, const string &key) {
+vector<string> extractAllJSONFieldValues(const string &json,
+                                         const string &key) {
   vector<string> out;
   string pattern = "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"";
   regex re(pattern);
@@ -445,8 +452,10 @@ optional<ParsedUrl> parseHttpUrl(const string &url) {
 }
 
 string joinPath(const string &a, const string &b) {
-  if (a.empty()) return b;
-  if (b.empty()) return a;
+  if (a.empty())
+    return b;
+  if (b.empty())
+    return a;
   if (a.back() == '/' && b.front() == '/') {
     return a + b.substr(1);
   }
@@ -471,6 +480,12 @@ public:
   string name;
   string instagramHandle;
   string profilePic;
+  vector<string> savedPostIds;
+
+  bool hasSavedPost(const string &postId) const {
+    return find(savedPostIds.begin(), savedPostIds.end(), postId) !=
+           savedPostIds.end();
+  }
 
   User() : friends(new vector<User *>()) {}
 
@@ -491,6 +506,17 @@ public:
   string getEmail() const { return email; }
 
   void addFriend(User *newFriend) { friends->push_back(newFriend); }
+
+  void removeFriend(const string &friendUserName) {
+    for (auto it = friends->begin(); it != friends->end();) {
+      if ((*it)->getIdOfUser() == friendUserName) {
+        it = friends->erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
   vector<User *> *getFriendsOfUser() const { return friends; }
 
   bool isFriend(const string &friendUserName) const {
@@ -510,8 +536,7 @@ public:
     string json = "{";
     json += "\"userName\":\"" + jsonEscape(userName) + "\",";
     json += "\"name\":\"" + jsonEscape(name) + "\",";
-    json +=
-        "\"instagramHandle\":\"" + jsonEscape(instagramHandle) + "\",";
+    json += "\"instagramHandle\":\"" + jsonEscape(instagramHandle) + "\",";
     json += "\"profilePic\":\"" + jsonEscape(profilePic) + "\",";
     json += "\"email\":\"" + jsonEscape(email) + "\",";
     json += "\"friendsCount\":" + to_string(friends->size());
@@ -520,6 +545,14 @@ public:
     for (size_t i = 0; i < friends->size(); i++) {
       json += "\"" + jsonEscape(friends->at(i)->getIdOfUser()) + "\"";
       if (i < friends->size() - 1)
+        json += ",";
+    }
+    json += "]";
+
+    json += ",\"savedPostIds\":[";
+    for (size_t i = 0; i < savedPostIds.size(); i++) {
+      json += "\"" + jsonEscape(savedPostIds[i]) + "\"";
+      if (i < savedPostIds.size() - 1)
         json += ",";
     }
     json += "]";
@@ -537,13 +570,17 @@ struct Message {
   string toUser;
   string text;
   string timestamp;
+  string mediaId;  // NEW: For image messages
+  string mediaUrl; // NEW: convenience URL
 
   string toJSON() const {
     string json = "{";
     json += "\"from\":\"" + jsonEscape(fromUser) + "\",";
     json += "\"to\":\"" + jsonEscape(toUser) + "\",";
     json += "\"text\":\"" + jsonEscape(text) + "\",";
-    json += "\"timestamp\":\"" + jsonEscape(timestamp) + "\"";
+    json += "\"timestamp\":\"" + jsonEscape(timestamp) + "\",";
+    json += "\"mediaId\":\"" + jsonEscape(mediaId) + "\",";
+    json += "\"mediaUrl\":\"" + jsonEscape(mediaUrl) + "\"";
     json += "}";
     return json;
   }
@@ -585,6 +622,7 @@ struct Post {
   string authorUserName;
   string caption;
   vector<PostMediaRef> media;
+  vector<string> taggedUserNames;
   vector<string> likedBy;
   vector<PostComment> comments;
   string createdAt;
@@ -606,8 +644,10 @@ private:
   size_t mediaIdCounter;
 
   bool isAllowedMimeType(const string &mimeType) const {
-    static const vector<string> allowedMimeTypes = {
-        "image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"};
+    static const vector<string> allowedMimeTypes = {"image/jpeg", "image/jpg",
+                                                    "image/png",  "image/webp",
+                                                    "image/gif",  "video/mp4",
+                                                    "video/webm"};
 
     return find(allowedMimeTypes.begin(), allowedMimeTypes.end(), mimeType) !=
            allowedMimeTypes.end();
@@ -636,6 +676,61 @@ public:
   // -------- Existing user/message features --------
   void addUser(User *newUser) { users->push_back(newUser); }
   void addMessage(Message *msg) { messages->push_back(msg); }
+
+  bool sendMessageWithMedia(const string &from, const string &to,
+                            const string &text, const httplib::FormData *file,
+                            string &errorMessage, int &errorStatus) {
+    if (!findUser(from) || !findUser(to)) {
+      errorStatus = 404;
+      errorMessage = "User not found";
+      return false;
+    }
+
+    string mediaId = "";
+    string mediaUrl = "";
+
+    if (file) {
+      if (!file->content.empty()) {
+        if (!isAllowedMimeType(file->content_type)) {
+          errorStatus = 400;
+          errorMessage = "Unsupported media type: " + file->content_type;
+          return false;
+        }
+
+        if (totalMediaBytes + file->content.size() > MEDIA_BYTES_CAP) {
+          errorStatus = 413;
+          errorMessage = "Upload rejected: server media memory cap reached";
+          return false;
+        }
+
+        MediaAsset asset;
+        asset.id = nextMediaId();
+        asset.ownerUserName = from;
+        asset.mimeType = file->content_type;
+        asset.originalFileName = file->filename;
+        asset.bytes = file->content;
+        asset.sizeBytes = file->content.size();
+        asset.createdAt = getCurrentUtcIsoTimestamp();
+
+        mediaId = asset.id;
+        mediaUrl = "/api/posts/media?mediaId=" + mediaId;
+
+        totalMediaBytes += asset.sizeBytes;
+        mediaAssets[mediaId] = std::move(asset);
+      }
+    }
+
+    Message *msg = new Message();
+    msg->fromUser = from;
+    msg->toUser = to;
+    msg->text = text;
+    msg->timestamp = getCurrentUtcIsoTimestamp();
+    msg->mediaId = mediaId;
+    msg->mediaUrl = mediaUrl;
+
+    addMessage(msg);
+    return true;
+  }
 
   User *findUser(const string &userName) {
     for (size_t i = 0; i < users->size(); i++) {
@@ -669,10 +764,11 @@ public:
     return findUser(userName) != nullptr;
   }
 
-  bool createUser(const string &userName, const string &name, long long phoneNumber,
-                  const string &email, const string &password,
-                  const string &instagramHandle, const string &profilePic,
-                  User *&createdUser, string &errorMessage, int &errorStatus) {
+  bool createUser(const string &userName, const string &name,
+                  long long phoneNumber, const string &email,
+                  const string &password, const string &instagramHandle,
+                  const string &profilePic, User *&createdUser,
+                  string &errorMessage, int &errorStatus) {
     if (trimCopy(userName).empty() || trimCopy(name).empty() ||
         trimCopy(email).empty() || trimCopy(password).empty()) {
       errorStatus = 400;
@@ -763,14 +859,12 @@ public:
 
   string buildPostJSON(const Post &post, const string &viewerUserName) const {
     const User *author = findUser(post.authorUserName);
-    bool likedByViewer =
-        find(post.likedBy.begin(), post.likedBy.end(), viewerUserName) !=
-        post.likedBy.end();
+    bool likedByViewer = find(post.likedBy.begin(), post.likedBy.end(),
+                              viewerUserName) != post.likedBy.end();
 
     string json = "{";
     json += "\"id\":\"" + jsonEscape(post.id) + "\",";
-    json +=
-        "\"authorUserName\":\"" + jsonEscape(post.authorUserName) + "\",";
+    json += "\"authorUserName\":\"" + jsonEscape(post.authorUserName) + "\",";
     json += "\"authorName\":\"" +
             jsonEscape(author ? author->name : post.authorUserName) + "\",";
     json += "\"authorProfilePic\":\"" +
@@ -803,6 +897,14 @@ public:
     }
     json += "],";
 
+    json += "\"taggedUserNames\":[";
+    for (size_t i = 0; i < post.taggedUserNames.size(); i++) {
+      json += "\"" + jsonEscape(post.taggedUserNames[i]) + "\"";
+      if (i < post.taggedUserNames.size() - 1)
+        json += ",";
+    }
+    json += "],";
+
     json += "\"comments\":[";
     for (size_t i = 0; i < post.comments.size(); i++) {
       const PostComment &comment = post.comments[i];
@@ -811,8 +913,8 @@ public:
       json += "{";
       json += "\"id\":\"" + jsonEscape(comment.id) + "\",";
       json += "\"postId\":\"" + jsonEscape(comment.postId) + "\",";
-      json += "\"authorUserName\":\"" + jsonEscape(comment.authorUserName) +
-              "\",";
+      json +=
+          "\"authorUserName\":\"" + jsonEscape(comment.authorUserName) + "\",";
       json += "\"authorName\":\"" +
               jsonEscape(commentAuthor ? commentAuthor->name
                                        : comment.authorUserName) +
@@ -836,7 +938,8 @@ public:
     return json;
   }
 
-  string getPostJSONById(const string &postId, const string &viewerUserName) const {
+  string getPostJSONById(const string &postId,
+                         const string &viewerUserName) const {
     const Post *post = findPost(postId);
     if (!post) {
       return "{}";
@@ -847,6 +950,7 @@ public:
   vector<Post> getPostsSnapshot() const { return posts; }
 
   bool addUploadedPost(const string &authorUserName, const string &caption,
+                       const vector<string> &taggedUserNames,
                        const vector<httplib::FormData> &files,
                        string &createdPostId, string &errorMessage,
                        int &errorStatus) {
@@ -859,6 +963,25 @@ public:
     if (caption.size() > static_cast<size_t>(MAX_CAPTION_LENGTH)) {
       errorStatus = 400;
       errorMessage = "Caption exceeds 2200 characters";
+      return false;
+    }
+
+    vector<string> normalizedTaggedUserNames;
+    for (const auto &taggedUserName : taggedUserNames) {
+      if (!findUser(taggedUserName)) {
+        errorStatus = 404;
+        errorMessage = "Tagged user not found: " + taggedUserName;
+        return false;
+      }
+      if (find(normalizedTaggedUserNames.begin(),
+               normalizedTaggedUserNames.end(),
+               taggedUserName) == normalizedTaggedUserNames.end()) {
+        normalizedTaggedUserNames.push_back(taggedUserName);
+      }
+    }
+    if (normalizedTaggedUserNames.size() > 20) {
+      errorStatus = 400;
+      errorMessage = "You can tag up to 20 users";
       return false;
     }
 
@@ -889,6 +1012,7 @@ public:
     post.id = nextPostId();
     post.authorUserName = authorUserName;
     post.caption = caption;
+    post.taggedUserNames = normalizedTaggedUserNames;
     post.createdAt = getCurrentUtcIsoTimestamp();
 
     for (const auto &file : files) {
@@ -921,7 +1045,8 @@ public:
   }
 
   bool addSeededPost(const string &authorUserName, const string &caption,
-                     const vector<PostMediaRef> &mediaRefs) {
+                     const vector<PostMediaRef> &mediaRefs,
+                     const vector<string> &taggedUserNames = {}) {
     if (!findUser(authorUserName) || mediaRefs.empty()) {
       return false;
     }
@@ -931,6 +1056,7 @@ public:
     post.authorUserName = authorUserName;
     post.caption = caption;
     post.media = mediaRefs;
+    post.taggedUserNames = taggedUserNames;
     post.createdAt = getCurrentUtcIsoTimestamp();
     posts.push_back(post);
     return true;
@@ -967,7 +1093,8 @@ public:
       const User *author = findUser(post.authorUserName);
       string authorName = author ? author->name : post.authorUserName;
 
-      if (queryLower.empty() || containsCaseInsensitive(post.caption, queryLower) ||
+      if (queryLower.empty() ||
+          containsCaseInsensitive(post.caption, queryLower) ||
           containsCaseInsensitive(post.authorUserName, queryLower) ||
           containsCaseInsensitive(authorName, queryLower)) {
         filteredPosts.push_back(&post);
@@ -1023,6 +1150,35 @@ public:
 
     post->likedBy.push_back(actorUserName);
     alreadyLiked = false;
+    return true;
+  }
+
+  bool savePost(const string &postId, const string &actorUserName,
+                bool &alreadySaved, string &errorMessage, int &errorStatus) {
+    Post *post = findPost(postId);
+    if (!post) {
+      errorStatus = 404;
+      errorMessage = "Post not found";
+      return false;
+    }
+
+    User *user = findUser(actorUserName);
+    if (!user) {
+      errorStatus = 404;
+      errorMessage = "User not found";
+      return false;
+    }
+
+    auto it =
+        find(user->savedPostIds.begin(), user->savedPostIds.end(), postId);
+    if (it != user->savedPostIds.end()) {
+      user->savedPostIds.erase(it);
+      alreadySaved = true; // Was saved, now unsaved
+      return true;
+    }
+
+    user->savedPostIds.push_back(postId);
+    alreadySaved = false; // Was not saved, now saved
     return true;
   }
 
@@ -1474,15 +1630,18 @@ public:
                                  nullptr) == 1;
     ok = ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN,
                                    static_cast<int>(iv.size()), nullptr) == 1;
-    ok = ok && EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) == 1;
     ok = ok &&
-         EVP_EncryptUpdate(ctx, ciphertext.data(), &outLen,
-                           reinterpret_cast<const unsigned char *>(plain.data()),
-                           static_cast<int>(plain.size())) == 1;
+         EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) == 1;
+    ok = ok && EVP_EncryptUpdate(
+                   ctx, ciphertext.data(), &outLen,
+                   reinterpret_cast<const unsigned char *>(plain.data()),
+                   static_cast<int>(plain.size())) == 1;
     totalLen += outLen;
-    ok = ok && EVP_EncryptFinal_ex(ctx, ciphertext.data() + totalLen, &outLen) == 1;
+    ok = ok &&
+         EVP_EncryptFinal_ex(ctx, ciphertext.data() + totalLen, &outLen) == 1;
     totalLen += outLen;
-    ok = ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag.data()) == 1;
+    ok = ok &&
+         EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag.data()) == 1;
 
     EVP_CIPHER_CTX_free(ctx);
     if (!ok) {
@@ -1494,7 +1653,8 @@ public:
            ":" + toHex(ciphertext.data(), static_cast<size_t>(totalLen));
   }
 
-  optional<string> decrypt(const string &encrypted, string &errorMessage) const {
+  optional<string> decrypt(const string &encrypted,
+                           string &errorMessage) const {
     vector<string> parts = splitBy(encrypted, ':');
     if (parts.size() != 3) {
       errorMessage = "Invalid encrypted token format";
@@ -1521,11 +1681,13 @@ public:
                                  nullptr) == 1;
     ok = ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN,
                                    static_cast<int>(iv.size()), nullptr) == 1;
-    ok = ok && EVP_DecryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) == 1;
+    ok = ok &&
+         EVP_DecryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data()) == 1;
     ok = ok && EVP_DecryptUpdate(ctx, plain.data(), &outLen, cipher.data(),
                                  static_cast<int>(cipher.size())) == 1;
     totalLen += outLen;
-    ok = ok && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag.data()) == 1;
+    ok = ok &&
+         EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag.data()) == 1;
     ok = ok && EVP_DecryptFinal_ex(ctx, plain.data() + totalLen, &outLen) == 1;
     totalLen += outLen;
 
@@ -1551,7 +1713,8 @@ HttpResult httpRequest(const string &method, const ParsedUrl &url,
                        const httplib::Headers &headers) {
   HttpResult result;
   const string scheme = url.secure ? "https" : "http";
-  const string schemeHostPort = scheme + "://" + url.host + ":" + to_string(url.port);
+  const string schemeHostPort =
+      scheme + "://" + url.host + ":" + to_string(url.port);
   httplib::Client client(schemeHostPort);
   client.set_connection_timeout(10);
   client.set_read_timeout(30);
@@ -1588,7 +1751,8 @@ HttpResult httpGetUrl(const string &url, const httplib::Headers &headers = {}) {
   return httpRequest("GET", *parsed, "", "", headers);
 }
 
-HttpResult httpPostForm(const string &url, const unordered_map<string, string> &form) {
+HttpResult httpPostForm(const string &url,
+                        const unordered_map<string, string> &form) {
   auto parsed = parseHttpUrl(url);
   if (!parsed) {
     return HttpResult{0, "", "Invalid URL: " + url};
@@ -1596,11 +1760,13 @@ HttpResult httpPostForm(const string &url, const unordered_map<string, string> &
   string body;
   bool first = true;
   for (const auto &entry : form) {
-    if (!first) body += "&";
+    if (!first)
+      body += "&";
     first = false;
     body += urlEncode(entry.first) + "=" + urlEncode(entry.second);
   }
-  return httpRequest("POST", *parsed, body, "application/x-www-form-urlencoded", {});
+  return httpRequest("POST", *parsed, body, "application/x-www-form-urlencoded",
+                     {});
 }
 
 string buildIsoDate(time_t utc, const char *format) {
@@ -1625,26 +1791,35 @@ string normalizeR2ObjectKeySegment(const string &segment) {
       out.push_back('_');
     }
   }
-  if (out.empty()) return "unknown";
+  if (out.empty())
+    return "unknown";
   return out;
 }
 
 string guessExtension(const string &contentType, const string &fallbackUrl) {
   string lower = toLowerCopy(contentType);
-  if (lower.find("image/jpeg") != string::npos) return "jpg";
-  if (lower.find("image/png") != string::npos) return "png";
-  if (lower.find("image/webp") != string::npos) return "webp";
-  if (lower.find("image/gif") != string::npos) return "gif";
-  if (lower.find("video/mp4") != string::npos) return "mp4";
-  if (lower.find("video/webm") != string::npos) return "webm";
+  if (lower.find("image/jpeg") != string::npos)
+    return "jpg";
+  if (lower.find("image/png") != string::npos)
+    return "png";
+  if (lower.find("image/webp") != string::npos)
+    return "webp";
+  if (lower.find("image/gif") != string::npos)
+    return "gif";
+  if (lower.find("video/mp4") != string::npos)
+    return "mp4";
+  if (lower.find("video/webm") != string::npos)
+    return "webm";
 
   size_t lastDot = fallbackUrl.rfind('.');
   if (lastDot != string::npos && lastDot + 1 < fallbackUrl.size()) {
     string ext = fallbackUrl.substr(lastDot + 1);
     size_t q = ext.find('?');
-    if (q != string::npos) ext = ext.substr(0, q);
+    if (q != string::npos)
+      ext = ext.substr(0, q);
     ext = toLowerAlnum(ext);
-    if (!ext.empty()) return ext;
+    if (!ext.empty())
+      return ext;
   }
   return "bin";
 }
@@ -1687,13 +1862,14 @@ private:
     }
 
     string refreshUrl =
-        "https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=" +
+        "https://graph.instagram.com/"
+        "refresh_access_token?grant_type=ig_refresh_token&access_token=" +
         urlEncode(tokenPlain);
     HttpResult refresh = httpGetUrl(refreshUrl);
     statusCode = refresh.status;
     if (refresh.status < 200 || refresh.status >= 300) {
-      errorMessage = "Token refresh failed with status " + to_string(refresh.status) +
-                     ": " + refresh.body;
+      errorMessage = "Token refresh failed with status " +
+                     to_string(refresh.status) + ": " + refresh.body;
       return false;
     }
 
@@ -1767,11 +1943,12 @@ private:
                               "x-amz-content-sha256:" + payloadHash + "\n" +
                               "x-amz-date:" + amzDate + "\n";
     string signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-    string canonicalRequest = "PUT\n" + canonicalUri + "\n\n" + canonicalHeaders +
-                              "\n" + signedHeaders + "\n" + payloadHash;
+    string canonicalRequest = "PUT\n" + canonicalUri + "\n\n" +
+                              canonicalHeaders + "\n" + signedHeaders + "\n" +
+                              payloadHash;
     string credentialScope = dateStamp + "/" + r2Region + "/s3/aws4_request";
-    string stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" + credentialScope +
-                          "\n" + sha256Hex(canonicalRequest);
+    string stringToSign = "AWS4-HMAC-SHA256\n" + amzDate + "\n" +
+                          credentialScope + "\n" + sha256Hex(canonicalRequest);
 
     vector<unsigned char> kDate =
         hmacSha256("AWS4" + r2SecretAccessKey, dateStamp);
@@ -1781,24 +1958,26 @@ private:
     vector<unsigned char> signature = hmacSha256(kSigning, stringToSign);
     string signatureHex = toHex(signature.data(), signature.size());
 
-    string authorization = "AWS4-HMAC-SHA256 Credential=" + r2AccessKeyId + "/" +
-                           credentialScope + ", SignedHeaders=" + signedHeaders +
-                           ", Signature=" + signatureHex;
+    string authorization =
+        "AWS4-HMAC-SHA256 Credential=" + r2AccessKeyId + "/" + credentialScope +
+        ", SignedHeaders=" + signedHeaders + ", Signature=" + signatureHex;
 
     httplib::Headers headers = {
         {"Host", host},
         {"x-amz-content-sha256", payloadHash},
         {"x-amz-date", amzDate},
         {"Authorization", authorization},
-        {"Content-Type", contentType.empty() ? "application/octet-stream" : contentType},
+        {"Content-Type",
+         contentType.empty() ? "application/octet-stream" : contentType},
     };
 
-    HttpResult putRes = httpRequest("PUT", *parseHttpUrl(url), payload,
-                                    contentType.empty() ? "application/octet-stream" : contentType,
-                                    headers);
+    HttpResult putRes = httpRequest(
+        "PUT", *parseHttpUrl(url), payload,
+        contentType.empty() ? "application/octet-stream" : contentType,
+        headers);
     if (putRes.status < 200 || putRes.status >= 300) {
-      errorMessage = "R2 upload failed (" + to_string(putRes.status) + "): " +
-                     putRes.body;
+      errorMessage =
+          "R2 upload failed (" + to_string(putRes.status) + "): " + putRes.body;
       return false;
     }
     return true;
@@ -1821,7 +2000,8 @@ private:
 
     HttpResult download = httpGetUrl(sourceUrl);
     if (download.status < 200 || download.status >= 300) {
-      errorMessage = "Asset download failed (" + to_string(download.status) + ")";
+      errorMessage =
+          "Asset download failed (" + to_string(download.status) + ")";
       return false;
     }
 
@@ -1886,7 +2066,8 @@ public:
         httpPostForm("https://api.instagram.com/oauth/access_token", tokenForm);
     if (shortTokenRes.status < 200 || shortTokenRes.status >= 300) {
       errorMessage = "Short-lived token exchange failed (" +
-                     to_string(shortTokenRes.status) + "): " + shortTokenRes.body;
+                     to_string(shortTokenRes.status) +
+                     "): " + shortTokenRes.body;
       return false;
     }
 
@@ -1897,7 +2078,8 @@ public:
     }
 
     string longUrl =
-        "https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=" +
+        "https://graph.instagram.com/"
+        "access_token?grant_type=ig_exchange_token&client_secret=" +
         urlEncode(igAppSecret) + "&access_token=" + urlEncode(*shortToken);
     HttpResult longTokenRes = httpGetUrl(longUrl);
     if (longTokenRes.status < 200 || longTokenRes.status >= 300) {
@@ -1976,7 +2158,8 @@ public:
       return false;
     }
 
-    if (connection.igUserId != igUserId || connection.igUsername != igUsername) {
+    if (connection.igUserId != igUserId ||
+        connection.igUsername != igUsername) {
       connection.igUserId = igUserId;
       connection.igUsername = igUsername;
       string upsertErr;
@@ -1984,8 +2167,8 @@ public:
     }
 
     string mediaListUrl = "https://graph.instagram.com/" + igVersion + "/" +
-                          urlEncode(igUserId) + "/media?access_token=" +
-                          urlEncode(token);
+                          urlEncode(igUserId) +
+                          "/media?access_token=" + urlEncode(token);
     HttpResult listRes = httpGetUrl(mediaListUrl);
     failureStatus = listRes.status;
     if (listRes.status < 200 || listRes.status >= 300) {
@@ -2013,7 +2196,8 @@ public:
     for (const string &igMediaId : mediaIds) {
       string detailUrl = "https://graph.instagram.com/" + igVersion + "/" +
                          urlEncode(igMediaId) +
-                         "?fields=id,media_type,media_url,thumbnail_url,permalink,caption,timestamp,username&access_token=" +
+                         "?fields=id,media_type,media_url,thumbnail_url,"
+                         "permalink,caption,timestamp,username&access_token=" +
                          urlEncode(token);
       HttpResult detailRes = httpGetUrl(detailUrl);
       if (detailRes.status < 200 || detailRes.status >= 300) {
@@ -2024,22 +2208,29 @@ public:
       }
 
       auto id = extractJSONString(detailRes.body, "id");
-      if (!id) continue;
+      if (!id)
+        continue;
       InstagramMediaRecord record;
       record.igMediaId = *id;
       record.connectionId = connection.id;
-      record.mediaType = extractJSONString(detailRes.body, "media_type").value_or("");
-      record.caption = extractJSONString(detailRes.body, "caption").value_or("");
-      record.permalink = extractJSONString(detailRes.body, "permalink").value_or("");
-      record.timestamp =
-          extractJSONString(detailRes.body, "timestamp").value_or(getCurrentUtcIsoTimestamp());
-      record.mediaUrl = extractJSONString(detailRes.body, "media_url").value_or("");
-      record.thumbnailUrl = extractJSONString(detailRes.body, "thumbnail_url").value_or("");
+      record.mediaType =
+          extractJSONString(detailRes.body, "media_type").value_or("");
+      record.caption =
+          extractJSONString(detailRes.body, "caption").value_or("");
+      record.permalink =
+          extractJSONString(detailRes.body, "permalink").value_or("");
+      record.timestamp = extractJSONString(detailRes.body, "timestamp")
+                             .value_or(getCurrentUtcIsoTimestamp());
+      record.mediaUrl =
+          extractJSONString(detailRes.body, "media_url").value_or("");
+      record.thumbnailUrl =
+          extractJSONString(detailRes.body, "thumbnail_url").value_or("");
       record.rawJson = detailRes.body;
       record.isActive = true;
 
       string cacheErr;
-      if (toLowerCopy(record.mediaType) == "image" && !record.mediaUrl.empty()) {
+      if (toLowerCopy(record.mediaType) == "image" &&
+          !record.mediaUrl.empty()) {
         string cachedUrl;
         string key;
         if (cacheAssetIfConfigured(igUserId, record.igMediaId, "main",
@@ -2112,8 +2303,10 @@ public:
         long long now = nowUnixSeconds();
 
         for (const auto &connection : connections) {
-          if (stopFlag.load()) break;
-          if (connection.status != "active") continue;
+          if (stopFlag.load())
+            break;
+          if (connection.status != "active")
+            continue;
 
           long long allowedAt = 0;
           auto it = nextAllowedSyncAt.find(connection.id);
@@ -2126,13 +2319,13 @@ public:
 
           string syncError;
           int failureStatus = 0;
-          bool ok = instagramService.syncConnectionById(connection.id, syncError,
-                                                        failureStatus);
+          bool ok = instagramService.syncConnectionById(
+              connection.id, syncError, failureStatus);
           if (ok) {
             failureCount.erase(connection.id);
             nextAllowedSyncAt.erase(connection.id);
-            cout << "[sync] connection " << connection.id << " synced successfully"
-                 << endl;
+            cout << "[sync] connection " << connection.id
+                 << " synced successfully" << endl;
           } else {
             int count = ++failureCount[connection.id];
             int backoffBase = min(3600, 15 * (1 << min(count, 7)));
@@ -2141,13 +2334,14 @@ public:
             nextAllowedSyncAt[connection.id] = now + backoff;
             cout << "[sync] connection " << connection.id
                  << " failed. backoffSeconds=" << backoff
-                 << " status=" << failureStatus
-                 << " error=" << syncError << endl;
+                 << " status=" << failureStatus << " error=" << syncError
+                 << endl;
           }
         }
 
         unique_lock<mutex> lock(cvMutex);
-        cv.wait_for(lock, chrono::minutes(15) + chrono::seconds(loopJitter(rng)),
+        cv.wait_for(lock,
+                    chrono::minutes(15) + chrono::seconds(loopJitter(rng)),
                     [this]() { return stopFlag.load(); });
       }
     });
@@ -2242,7 +2436,7 @@ int main() {
                              "ericpham"));
   ericGram->addUser(new User("alice123", "Alice Smith", 1234567890LL,
                              "alice@email.com", "password123"));
-  ericGram->addUser(new User("bob456", "Bob Johnson", 9876543210LL,
+  ericGram->addUser(new User("JensenHuang", "jenson huang", 9876543210LL,
                              "bob@email.com", "mypassword"));
   ericGram->addUser(new User("charlie789", "Charlie Brown", 5555555555LL,
                              "charlie@email.com", "secret123"));
@@ -2271,7 +2465,8 @@ int main() {
 
   InMemoryStore store;
 
-  TokenCipher tokenCipher(getEnvOrDefault("IG_TOKEN_ENC_KEY", "dev-only-change-me"));
+  TokenCipher tokenCipher(
+      getEnvOrDefault("IG_TOKEN_ENC_KEY", "dev-only-change-me"));
   InstagramIntegrationService instagramService(store, tokenCipher);
   SyncWorker syncWorker(store, instagramService);
   syncWorker.start();
@@ -2285,11 +2480,17 @@ int main() {
 
   const string sessionCookieName = "ericgram_session";
   const bool secureCookies =
-      getEnvBool("COOKIE_SECURE", toLowerCopy(getEnvOrDefault("ERICGRAM_ENV", "development")) == "production");
+      getEnvBool("COOKIE_SECURE",
+                 toLowerCopy(getEnvOrDefault("ERICGRAM_ENV", "development")) ==
+                     "production");
   const string frontendBaseUrl =
       getEnvOrDefault("FRONTEND_BASE_URL", "http://localhost:5176");
+  const string staticDir = getEnvOrDefault("STATIC_DIR", "frontend/dist");
+  const filesystem::path staticIndexPath =
+      filesystem::path(staticDir) / "index.html";
 
-  auto setCorsHeaders = [](const httplib::Request &req, httplib::Response &res) {
+  auto setCorsHeaders = [](const httplib::Request &req,
+                           httplib::Response &res) {
     string origin = req.get_header_value("Origin");
     if (!origin.empty()) {
       res.set_header("Access-Control-Allow-Origin", origin);
@@ -2298,13 +2499,58 @@ int main() {
     } else {
       res.set_header("Access-Control-Allow-Origin", "*");
     }
-    res.set_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.set_header("Access-Control-Allow-Methods",
+                   "GET, POST, DELETE, OPTIONS");
     res.set_header("Access-Control-Allow-Headers", "Content-Type, X-Auth-User");
   };
 
-  auto makeSessionCookie = [&](const string &sessionId, long long maxAgeSeconds) {
-    string cookie = sessionCookieName + "=" + sessionId + "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" +
-                    to_string(maxAgeSeconds);
+  if (filesystem::exists(staticDir) && filesystem::is_directory(staticDir)) {
+    server.set_mount_point("/", staticDir);
+  }
+
+  server.set_error_handler([setCorsHeaders, staticIndexPath](
+                               const httplib::Request &req,
+                               httplib::Response &res) {
+    if (res.status != 404) {
+      return;
+    }
+
+    const bool isApiRoute =
+        req.path == "/api" || req.path.rfind("/api/", 0) == 0;
+    if (isApiRoute) {
+      setCorsHeaders(req, res);
+      if (res.body.empty()) {
+        res.set_content("{\"error\":\"Not found\"}", "application/json");
+      }
+      return;
+    }
+
+    if (!filesystem::exists(staticIndexPath) ||
+        !filesystem::is_regular_file(staticIndexPath)) {
+      if (res.body.empty()) {
+        res.set_content("Not found", "text/plain");
+      }
+      return;
+    }
+
+    ifstream file(staticIndexPath, ios::binary);
+    if (!file) {
+      if (res.body.empty()) {
+        res.set_content("Not found", "text/plain");
+      }
+      return;
+    }
+
+    string html((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+    res.status = 200;
+    res.set_content(html, "text/html; charset=UTF-8");
+  });
+
+  auto makeSessionCookie = [&](const string &sessionId,
+                               long long maxAgeSeconds) {
+    string cookie =
+        sessionCookieName + "=" + sessionId +
+        "; Path=/; HttpOnly; SameSite=Lax; Max-Age=" + to_string(maxAgeSeconds);
     if (secureCookies) {
       cookie += "; Secure";
     }
@@ -2312,8 +2558,8 @@ int main() {
   };
 
   auto makeClearedSessionCookie = [&]() {
-    string cookie = sessionCookieName +
-                    "=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+    string cookie =
+        sessionCookieName + "=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
     if (secureCookies) {
       cookie += "; Secure";
     }
@@ -2361,6 +2607,34 @@ int main() {
     return true;
   };
 
+  auto writeAuthSuccess = [&](User *user, httplib::Response &res) -> bool {
+    if (!user) {
+      setJsonError(res, 500, "Authentication failed");
+      return false;
+    }
+
+    SessionRecord session;
+    session.sessionId = randomHex(24);
+    session.userName = user->userName;
+    session.role = adminUsers.count(user->userName) > 0 ? "admin" : "user";
+    session.csrfToken = randomHex(16);
+    session.expiresAt = nowUnixSeconds() + SESSION_TTL_SECONDS;
+
+    string errorMessage;
+    if (!store.upsertSession(session, errorMessage)) {
+      setJsonError(res, 500, "Could not create session");
+      return false;
+    }
+
+    res.set_header("Set-Cookie",
+                   makeSessionCookie(session.sessionId, SESSION_TTL_SECONDS));
+    res.set_content("{\"user\":" + user->toJSON() + ",\"role\":\"" +
+                        jsonEscape(session.role) + "\",\"sessionExpiresAt\":" +
+                        to_string(session.expiresAt) + "}",
+                    "application/json");
+    return true;
+  };
+
   auto authorizeActor = [ericGram](const httplib::Request &req,
                                    httplib::Response &res,
                                    const string &actorUserName) {
@@ -2381,46 +2655,104 @@ int main() {
   };
 
   server.Options(R"(/api/.*)", [setCorsHeaders](const httplib::Request &req,
-                                                  httplib::Response &res) {
+                                                httplib::Response &res) {
     setCorsHeaders(req, res);
     res.status = 200;
   });
 
-  server.Post("/api/auth/login", [ericGram, &store, &adminUsers, &makeSessionCookie,
-                                   setCorsHeaders](const httplib::Request &req,
-                                                   httplib::Response &res) {
+  server.Post("/api/auth/login",
+              [ericGram, setCorsHeaders, &writeAuthSuccess](
+                  const httplib::Request &req, httplib::Response &res) {
+                setCorsHeaders(req, res);
+                string email = trimCopy(getJSONValue(req.body, "email"));
+                string password = getJSONValue(req.body, "password");
+                User *user = ericGram->findUserByEmail(email);
+                if (!user || !user->checkPassword(password)) {
+                  setJsonError(res, 401, "Invalid email or password");
+                  return;
+                }
+                writeAuthSuccess(user, res);
+              });
+
+  server.Post("/api/auth/google", [ericGram, setCorsHeaders, &writeAuthSuccess](
+                                      const httplib::Request &req,
+                                      httplib::Response &res) {
     setCorsHeaders(req, res);
+
     string email = trimCopy(getJSONValue(req.body, "email"));
-    string password = getJSONValue(req.body, "password");
+    string name = trimCopy(getJSONValue(req.body, "name"));
+    string profilePic = trimCopy(getJSONValue(req.body, "profilePic"));
+    string suggestedUserName =
+        trimCopy(getJSONValue(req.body, "suggestedUserName"));
+
+    if (email.empty()) {
+      setJsonError(res, 400, "Google account email is required");
+      return;
+    }
+
     User *user = ericGram->findUserByEmail(email);
-    if (!user || !user->checkPassword(password)) {
-      setJsonError(res, 401, "Invalid email or password");
-      return;
+    if (!user) {
+      string baseUserName = suggestedUserName;
+      if (baseUserName.empty()) {
+        size_t atPos = email.find('@');
+        string localPart =
+            atPos == string::npos ? email : email.substr(0, atPos);
+        for (char ch : localPart) {
+          if (isalnum(static_cast<unsigned char>(ch)) || ch == '_') {
+            baseUserName += ch;
+          } else {
+            baseUserName += '_';
+          }
+          if (baseUserName.size() >= 18) {
+            break;
+          }
+        }
+      }
+
+      if (baseUserName.empty()) {
+        baseUserName = "user";
+      }
+
+      string candidateUserName = baseUserName;
+      int suffix = 1;
+      while (ericGram->isUserNameTaken(candidateUserName)) {
+        candidateUserName = baseUserName + "_" + to_string(suffix++);
+      }
+
+      unsigned long long phoneHash = 0;
+      for (char ch : email) {
+        phoneHash = (phoneHash * 131ULL + static_cast<unsigned char>(ch)) %
+                    9000000000ULL;
+      }
+      long long phoneNumber = static_cast<long long>(1000000000ULL + phoneHash);
+
+      User *createdUser = nullptr;
+      string errorMessage;
+      int errorStatus = 400;
+      if (!ericGram->createUser(
+              candidateUserName, name.empty() ? candidateUserName : name,
+              phoneNumber, email, randomHex(24), "", profilePic, createdUser,
+              errorMessage, errorStatus)) {
+        setJsonError(res, errorStatus, errorMessage);
+        return;
+      }
+      user = createdUser;
+    } else {
+      if (!name.empty()) {
+        user->name = name;
+      }
+      if (!profilePic.empty()) {
+        user->profilePic = profilePic;
+      }
     }
 
-    SessionRecord session;
-    session.sessionId = randomHex(24);
-    session.userName = user->userName;
-    session.role = adminUsers.count(user->userName) > 0 ? "admin" : "user";
-    session.csrfToken = randomHex(16);
-    session.expiresAt = nowUnixSeconds() + SESSION_TTL_SECONDS;
-
-    string errorMessage;
-    if (!store.upsertSession(session, errorMessage)) {
-      setJsonError(res, 500, "Could not create session");
-      return;
-    }
-    res.set_header("Set-Cookie",
-                   makeSessionCookie(session.sessionId, SESSION_TTL_SECONDS));
-    res.set_content("{\"user\":" + user->toJSON() + ",\"role\":\"" +
-                        jsonEscape(session.role) + "\",\"sessionExpiresAt\":" +
-                        to_string(session.expiresAt) + "}",
-                    "application/json");
+    writeAuthSuccess(user, res);
   });
 
-  server.Get("/api/auth/me", [ericGram, &store, &makeSessionCookie, requireSession,
-                               setCorsHeaders](const httplib::Request &req,
-                                               httplib::Response &res) {
+  server.Get("/api/auth/me", [ericGram, &store, &makeSessionCookie,
+                              requireSession,
+                              setCorsHeaders](const httplib::Request &req,
+                                              httplib::Response &res) {
     setCorsHeaders(req, res);
     SessionRecord session;
     if (!requireSession(req, res, session)) {
@@ -2446,8 +2778,8 @@ int main() {
   });
 
   server.Post("/api/auth/logout", [&store, &makeClearedSessionCookie,
-                                    setCorsHeaders](const httplib::Request &req,
-                                                    httplib::Response &res) {
+                                   setCorsHeaders](const httplib::Request &req,
+                                                   httplib::Response &res) {
     setCorsHeaders(req, res);
     string cookieHeader = req.get_header_value("Cookie");
     if (!cookieHeader.empty()) {
@@ -2463,166 +2795,172 @@ int main() {
   });
 
   // Backwards-compatible local login for legacy frontend.
-  server.Post("/api/login", [ericGram, setCorsHeaders](const httplib::Request &req,
-                                                        httplib::Response &res) {
-    setCorsHeaders(req, res);
-    string email = getJSONValue(req.body, "email");
-    string password = getJSONValue(req.body, "password");
-
-    User *user = ericGram->findUserByEmail(email);
-    if (!user || !user->checkPassword(password)) {
-      setJsonError(res, 401, "Invalid email or password");
-      return;
-    }
-    res.set_content(user->toJSON(), "application/json");
-  });
-
-  server.Post("/api/signup", [ericGram, setCorsHeaders](const httplib::Request &req,
-                                                         httplib::Response &res) {
-    setCorsHeaders(req, res);
-
-    string userName = trimCopy(getJSONValue(req.body, "userName"));
-    string name = trimCopy(getJSONValue(req.body, "name"));
-    string phoneNumberRaw = trimCopy(getJSONValue(req.body, "phoneNumber"));
-    string email = trimCopy(getJSONValue(req.body, "email"));
-    string password = getJSONValue(req.body, "password");
-    string instagramHandle = trimCopy(getJSONValue(req.body, "instagramHandle"));
-    string profilePic = trimCopy(getJSONValue(req.body, "profilePic"));
-
-    long long phoneNumber = 0;
-    try {
-      phoneNumber = stoll(phoneNumberRaw);
-    } catch (...) {
-      setJsonError(res, 400, "phoneNumber must be a valid integer string");
-      return;
-    }
-
-    User *createdUser = nullptr;
-    string errorMessage;
-    int errorStatus = 400;
-    if (!ericGram->createUser(userName, name, phoneNumber, email, password,
-                              instagramHandle, profilePic, createdUser,
-                              errorMessage, errorStatus)) {
-      setJsonError(res, errorStatus, errorMessage);
-      return;
-    }
-
-    res.set_content(createdUser->toJSON(), "application/json");
-  });
-
-  server.Post("/api/admin/instagram/oauth/start",
-              [&store, &instagramService, requireSession, setCorsHeaders](
-                  const httplib::Request &req, httplib::Response &res) {
+  server.Post("/api/login",
+              [ericGram, setCorsHeaders](const httplib::Request &req,
+                                         httplib::Response &res) {
                 setCorsHeaders(req, res);
-                SessionRecord session;
-                if (!requireSession(req, res, session)) {
-                  return;
-                }
-                if (!instagramService.isConfigured()) {
-                  setJsonError(res, 500,
-                               "Instagram integration is not configured");
-                  return;
-                }
+                string email = getJSONValue(req.body, "email");
+                string password = getJSONValue(req.body, "password");
 
-                string state = randomHex(20);
-                string errorMessage;
-                if (!store.updateSessionCsrfToken(session.sessionId, state,
-                                                  errorMessage)) {
-                  setJsonError(res, 500, "Failed to update CSRF state");
+                User *user = ericGram->findUserByEmail(email);
+                if (!user || !user->checkPassword(password)) {
+                  setJsonError(res, 401, "Invalid email or password");
                   return;
                 }
-                string authUrl = instagramService.buildOAuthAuthorizationUrl(state);
-                res.set_content("{\"authorizationUrl\":\"" + jsonEscape(authUrl) +
-                                    "\"}",
-                                "application/json");
+                res.set_content(user->toJSON(), "application/json");
               });
 
-  server.Get("/api/admin/instagram/oauth/callback",
-             [&store, &instagramService, requireSession, frontendBaseUrl, setCorsHeaders](
-                 const httplib::Request &req, httplib::Response &res) {
-               setCorsHeaders(req, res);
-               SessionRecord session;
-               if (!requireSession(req, res, session)) {
-                 return;
-               }
+  server.Post(
+      "/api/signup", [ericGram, setCorsHeaders](const httplib::Request &req,
+                                                httplib::Response &res) {
+        setCorsHeaders(req, res);
 
-               string redirect = frontendBaseUrl + "/";
-               string deniedError = req.get_param_value("error");
-               if (!deniedError.empty()) {
-                 res.status = 302;
-                 res.set_header("Location", redirect + "?instagram_error=" +
-                                               urlEncode(deniedError));
-                 return;
-               }
+        string userName = trimCopy(getJSONValue(req.body, "userName"));
+        string name = trimCopy(getJSONValue(req.body, "name"));
+        string phoneNumberRaw = trimCopy(getJSONValue(req.body, "phoneNumber"));
+        string email = trimCopy(getJSONValue(req.body, "email"));
+        string password = getJSONValue(req.body, "password");
+        string instagramHandle =
+            trimCopy(getJSONValue(req.body, "instagramHandle"));
+        string profilePic = trimCopy(getJSONValue(req.body, "profilePic"));
 
-               string code = req.get_param_value("code");
-               string state = req.get_param_value("state");
-               if (code.empty() || state.empty()) {
-                 res.status = 302;
-                 res.set_header(
-                     "Location",
-                     redirect + "?instagram_error=missing_code_or_state");
-                 return;
-               }
+        long long phoneNumber = 0;
+        try {
+          phoneNumber = stoll(phoneNumberRaw);
+        } catch (...) {
+          setJsonError(res, 400, "phoneNumber must be a valid integer string");
+          return;
+        }
 
-               if (state != session.csrfToken) {
-                 res.status = 302;
-                 res.set_header(
-                     "Location",
-                     redirect + "?instagram_error=csrf_state_mismatch");
-                 return;
-               }
+        User *createdUser = nullptr;
+        string errorMessage;
+        int errorStatus = 400;
+        if (!ericGram->createUser(userName, name, phoneNumber, email, password,
+                                  instagramHandle, profilePic, createdUser,
+                                  errorMessage, errorStatus)) {
+          setJsonError(res, errorStatus, errorMessage);
+          return;
+        }
 
-               InstagramConnectionRecord connection;
-               string errorMessage;
-               if (!instagramService.exchangeCodeAndStoreConnection(
-                       code, connection, errorMessage)) {
-                 res.status = 302;
-                 res.set_header("Location", redirect + "?instagram_error=" +
-                                               urlEncode(errorMessage));
-                 return;
-               }
+        res.set_content(createdUser->toJSON(), "application/json");
+      });
 
-               int failureStatus = 0;
-               string syncError;
-               instagramService.syncConnectionById(connection.id, syncError,
-                                                   failureStatus);
+  server.Post(
+      "/api/admin/instagram/oauth/start",
+      [&store, &instagramService, requireSession,
+       setCorsHeaders](const httplib::Request &req, httplib::Response &res) {
+        setCorsHeaders(req, res);
+        SessionRecord session;
+        if (!requireSession(req, res, session)) {
+          return;
+        }
+        if (!instagramService.isConfigured()) {
+          setJsonError(res, 500, "Instagram integration is not configured");
+          return;
+        }
 
-               res.status = 302;
-               res.set_header("Location",
-                              redirect + "?instagram_connected=1&connectionId=" +
-                                  to_string(connection.id));
-             });
+        string state = randomHex(20);
+        string errorMessage;
+        if (!store.updateSessionCsrfToken(session.sessionId, state,
+                                          errorMessage)) {
+          setJsonError(res, 500, "Failed to update CSRF state");
+          return;
+        }
+        string authUrl = instagramService.buildOAuthAuthorizationUrl(state);
+        res.set_content("{\"authorizationUrl\":\"" + jsonEscape(authUrl) +
+                            "\"}",
+                        "application/json");
+      });
 
-  server.Get("/api/admin/instagram/connections",
-             [&store, requireSession, setCorsHeaders](const httplib::Request &req,
-                                                    httplib::Response &res) {
-               setCorsHeaders(req, res);
-               SessionRecord session;
-               if (!requireSession(req, res, session)) {
-                 return;
-               }
-               string errorMessage;
-               vector<InstagramConnectionRecord> connections =
-                   store.listConnections(errorMessage);
+  server.Get(
+      "/api/admin/instagram/oauth/callback",
+      [&store, &instagramService, requireSession, frontendBaseUrl,
+       setCorsHeaders](const httplib::Request &req, httplib::Response &res) {
+        setCorsHeaders(req, res);
+        SessionRecord session;
+        if (!requireSession(req, res, session)) {
+          return;
+        }
 
-               string json = "{\"items\":[";
-               for (size_t i = 0; i < connections.size(); i++) {
-                 const auto &connection = connections[i];
-                 json += "{";
-                 json += "\"id\":" + to_string(connection.id) + ",";
-                 json += "\"igUserId\":\"" + jsonEscape(connection.igUserId) + "\",";
-                 json += "\"igUsername\":\"" + jsonEscape(connection.igUsername) + "\",";
-                 json += "\"tokenExpiresAt\":" + to_string(connection.tokenExpiresAt) + ",";
-                 json += "\"scopes\":\"" + jsonEscape(connection.scopes) + "\",";
-                 json += "\"lastSyncAt\":" + to_string(connection.lastSyncAt) + ",";
-                 json += "\"status\":\"" + jsonEscape(connection.status) + "\"";
-                 json += "}";
-                 if (i + 1 < connections.size()) json += ",";
-               }
-               json += "]}";
-               res.set_content(json, "application/json");
-             });
+        string redirect = frontendBaseUrl + "/";
+        string deniedError = req.get_param_value("error");
+        if (!deniedError.empty()) {
+          res.status = 302;
+          res.set_header("Location", redirect + "?instagram_error=" +
+                                         urlEncode(deniedError));
+          return;
+        }
+
+        string code = req.get_param_value("code");
+        string state = req.get_param_value("state");
+        if (code.empty() || state.empty()) {
+          res.status = 302;
+          res.set_header("Location",
+                         redirect + "?instagram_error=missing_code_or_state");
+          return;
+        }
+
+        if (state != session.csrfToken) {
+          res.status = 302;
+          res.set_header("Location",
+                         redirect + "?instagram_error=csrf_state_mismatch");
+          return;
+        }
+
+        InstagramConnectionRecord connection;
+        string errorMessage;
+        if (!instagramService.exchangeCodeAndStoreConnection(code, connection,
+                                                             errorMessage)) {
+          res.status = 302;
+          res.set_header("Location", redirect + "?instagram_error=" +
+                                         urlEncode(errorMessage));
+          return;
+        }
+
+        int failureStatus = 0;
+        string syncError;
+        instagramService.syncConnectionById(connection.id, syncError,
+                                            failureStatus);
+
+        res.status = 302;
+        res.set_header("Location", redirect +
+                                       "?instagram_connected=1&connectionId=" +
+                                       to_string(connection.id));
+      });
+
+  server.Get(
+      "/api/admin/instagram/connections",
+      [&store, requireSession, setCorsHeaders](const httplib::Request &req,
+                                               httplib::Response &res) {
+        setCorsHeaders(req, res);
+        SessionRecord session;
+        if (!requireSession(req, res, session)) {
+          return;
+        }
+        string errorMessage;
+        vector<InstagramConnectionRecord> connections =
+            store.listConnections(errorMessage);
+
+        string json = "{\"items\":[";
+        for (size_t i = 0; i < connections.size(); i++) {
+          const auto &connection = connections[i];
+          json += "{";
+          json += "\"id\":" + to_string(connection.id) + ",";
+          json += "\"igUserId\":\"" + jsonEscape(connection.igUserId) + "\",";
+          json +=
+              "\"igUsername\":\"" + jsonEscape(connection.igUsername) + "\",";
+          json += "\"tokenExpiresAt\":" + to_string(connection.tokenExpiresAt) +
+                  ",";
+          json += "\"scopes\":\"" + jsonEscape(connection.scopes) + "\",";
+          json += "\"lastSyncAt\":" + to_string(connection.lastSyncAt) + ",";
+          json += "\"status\":\"" + jsonEscape(connection.status) + "\"";
+          json += "}";
+          if (i + 1 < connections.size())
+            json += ",";
+        }
+        json += "]}";
+        res.set_content(json, "application/json");
+      });
 
   server.Post(R"(/api/admin/instagram/connections/(\d+)/sync)",
               [&instagramService, requireSession, setCorsHeaders](
@@ -2635,8 +2973,8 @@ int main() {
                 int connectionId = stoi(req.matches[1]);
                 string errorMessage;
                 int failureStatus = 0;
-                if (!instagramService.syncConnectionById(connectionId, errorMessage,
-                                                         failureStatus)) {
+                if (!instagramService.syncConnectionById(
+                        connectionId, errorMessage, failureStatus)) {
                   setJsonError(res, 500, "Sync failed: " + errorMessage);
                   return;
                 }
@@ -2646,8 +2984,8 @@ int main() {
               });
 
   server.Delete(R"(/api/admin/instagram/connections/(\d+))",
-                [&store, requireSession, setCorsHeaders](const httplib::Request &req,
-                                                       httplib::Response &res) {
+                [&store, requireSession, setCorsHeaders](
+                    const httplib::Request &req, httplib::Response &res) {
                   setCorsHeaders(req, res);
                   SessionRecord session;
                   if (!requireSession(req, res, session)) {
@@ -2665,11 +3003,14 @@ int main() {
                 });
 
   server.Get("/api/feed", [&store, setCorsHeaders](const httplib::Request &req,
-                                                    httplib::Response &res) {
+                                                   httplib::Response &res) {
     setCorsHeaders(req, res);
-    int limit = parsePositiveIntOrDefault(req.get_param_value("limit"), FEED_DEFAULT_LIMIT);
-    if (limit > FEED_MAX_LIMIT) limit = FEED_MAX_LIMIT;
-    if (limit <= 0) limit = FEED_DEFAULT_LIMIT;
+    int limit = parsePositiveIntOrDefault(req.get_param_value("limit"),
+                                          FEED_DEFAULT_LIMIT);
+    if (limit > FEED_MAX_LIMIT)
+      limit = FEED_MAX_LIMIT;
+    if (limit <= 0)
+      limit = FEED_DEFAULT_LIMIT;
     string cursorRaw = req.get_param_value("cursor");
     optional<pair<string, string>> cursor = decodeFeedCursor(cursorRaw);
     string sourceFilter = toLowerCopy(trimCopy(req.get_param_value("source")));
@@ -2679,15 +3020,15 @@ int main() {
         setJsonError(res, 400,
                      "Local feed media is disabled. Use source=instagram.");
       } else {
-        setJsonError(res, 400,
-                     "Invalid source filter. Use all or instagram.");
+        setJsonError(res, 400, "Invalid source filter. Use all or instagram.");
       }
       return;
     }
 
     vector<FeedItem> allItems;
     string dbError;
-    vector<InstagramMediaRecord> igMedia = store.listActiveInstagramMedia(dbError);
+    vector<InstagramMediaRecord> igMedia =
+        store.listActiveInstagramMedia(dbError);
     for (const auto &record : igMedia) {
       FeedItem item;
       item.id = "ig:" + record.igMediaId;
@@ -2727,8 +3068,9 @@ int main() {
       if (cursor) {
         const string &cursorCreatedAt = cursor->first;
         const string &cursorId = cursor->second;
-        bool isOlder = item.createdAt < cursorCreatedAt ||
-                       (item.createdAt == cursorCreatedAt && item.id < cursorId);
+        bool isOlder =
+            item.createdAt < cursorCreatedAt ||
+            (item.createdAt == cursorCreatedAt && item.id < cursorId);
         if (!isOlder) {
           continue;
         }
@@ -2750,7 +3092,8 @@ int main() {
     json += "\"items\":[";
     for (size_t i = 0; i < filtered.size(); i++) {
       json += buildFeedItemJSON(filtered[i]);
-      if (i + 1 < filtered.size()) json += ",";
+      if (i + 1 < filtered.size())
+        json += ",";
     }
     json += "],";
     json += "\"nextCursor\":\"" + jsonEscape(nextCursor) + "\",";
@@ -2766,9 +3109,9 @@ int main() {
                res.set_content(ericGram->getAllUsersJSON(), "application/json");
              });
 
-  server.Post("/api/friends/add", [ericGram, setCorsHeaders](
-                                       const httplib::Request &req,
-                                       httplib::Response &res) {
+  server.Post("/api/friends/add", [ericGram,
+                                   setCorsHeaders](const httplib::Request &req,
+                                                   httplib::Response &res) {
     setCorsHeaders(req, res);
 
     string userName = getJSONValue(req.body, "userName");
@@ -2788,31 +3131,71 @@ int main() {
     }
 
     user->addFriend(friendUser);
-    friendUser->addFriend(user);
+    // Removed automatic follow-back
+    // friendUser->addFriend(user);
 
     res.set_content(user->toJSON(), "application/json");
   });
 
-  server.Post("/api/messages/send", [ericGram, setCorsHeaders](
-                                         const httplib::Request &req,
+  server.Post("/api/friends/remove",
+              [ericGram, setCorsHeaders](const httplib::Request &req,
                                          httplib::Response &res) {
+                setCorsHeaders(req, res);
+
+                string userName = getJSONValue(req.body, "userName");
+                string friendUserName =
+                    getJSONValue(req.body, "friendUserName");
+
+                User *user = ericGram->findUser(userName);
+                User *friendUser = ericGram->findUser(friendUserName);
+
+                if (!user || !friendUser) {
+                  setJsonError(res, 404, "User not found");
+                  return;
+                }
+
+                if (!user->isFriend(friendUserName)) {
+                  setJsonError(res, 400, "Not a friend");
+                  return;
+                }
+
+                user->removeFriend(friendUserName);
+
+                res.set_content(user->toJSON(), "application/json");
+              });
+
+  server.Post("/api/messages/send", [ericGram, setCorsHeaders](
+                                        const httplib::Request &req,
+                                        httplib::Response &res) {
     setCorsHeaders(req, res);
 
-    string from = getJSONValue(req.body, "from");
-    string to = getJSONValue(req.body, "to");
-    string text = getJSONValue(req.body, "text");
+    string from, to, text;
+    bool success = false;
+    string errorMessage = "Process failed";
+    int errorStatus = 400;
 
-    if (!ericGram->findUser(from) || !ericGram->findUser(to)) {
-      setJsonError(res, 404, "User not found");
-      return;
+    if (req.is_multipart_form_data()) {
+      from = req.form.get_field("from");
+      to = req.form.get_field("to");
+      text = req.form.get_field("text");
+
+      vector<httplib::FormData> files = req.form.get_files("mediaFile");
+      const httplib::FormData *fileData = files.empty() ? nullptr : &files[0];
+
+      success = ericGram->sendMessageWithMedia(from, to, text, fileData,
+                                               errorMessage, errorStatus);
+    } else {
+      from = getJSONValue(req.body, "from");
+      to = getJSONValue(req.body, "to");
+      text = getJSONValue(req.body, "text");
+      success = ericGram->sendMessageWithMedia(from, to, text, nullptr,
+                                               errorMessage, errorStatus);
     }
 
-    Message *msg = new Message();
-    msg->fromUser = from;
-    msg->toUser = to;
-    msg->text = text;
-    msg->timestamp = getCurrentUtcIsoTimestamp();
-    ericGram->addMessage(msg);
+    if (!success) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
 
     res.set_content("{\"status\":\"sent\"}", "application/json");
   });
@@ -2829,57 +3212,56 @@ int main() {
                                "application/json");
              });
 
-  server.Post("/api/posts/create",
-              [ericGram, setCorsHeaders, authorizeActor](
-                  const httplib::Request &req, httplib::Response &res) {
-                setCorsHeaders(req, res);
+  server.Post("/api/posts/create", [ericGram, setCorsHeaders,
+                                    authorizeActor](const httplib::Request &req,
+                                                    httplib::Response &res) {
+    setCorsHeaders(req, res);
 
-                if (!req.is_multipart_form_data()) {
-                  setJsonError(res, 400, "Expected multipart/form-data");
-                  return;
-                }
+    if (!req.is_multipart_form_data()) {
+      setJsonError(res, 400, "Expected multipart/form-data");
+      return;
+    }
 
-                string authorUserName = req.form.get_field("authorUserName");
-                string caption = req.form.get_field("caption");
+    string authorUserName = req.form.get_field("authorUserName");
+    string caption = req.form.get_field("caption");
 
-                if (!authorizeActor(req, res, authorUserName)) {
-                  return;
-                }
+    if (!authorizeActor(req, res, authorUserName)) {
+      return;
+    }
 
-                vector<httplib::FormData> files = req.form.get_files("mediaFiles");
-                string createdPostId;
-                string errorMessage;
-                int errorStatus = 400;
-                if (!ericGram->addUploadedPost(authorUserName, caption, files,
-                                               createdPostId, errorMessage,
-                                               errorStatus)) {
-                  setJsonError(res, errorStatus, errorMessage);
-                  return;
-                }
+    vector<httplib::FormData> files = req.form.get_files("mediaFiles");
+    string createdPostId;
+    string errorMessage;
+    int errorStatus = 400;
+    if (!ericGram->addUploadedPost(authorUserName, caption, {}, files,
+                                   createdPostId, errorMessage, errorStatus)) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
 
-                res.set_content("{\"status\":\"created\",\"post\":" +
-                                    ericGram->getPostJSONById(createdPostId, authorUserName) +
-                                    "}",
-                                "application/json");
-              });
+    res.set_content(
+        "{\"status\":\"created\",\"post\":" +
+            ericGram->getPostJSONById(createdPostId, authorUserName) + "}",
+        "application/json");
+  });
 
-  server.Get("/api/posts",
-             [ericGram, setCorsHeaders](const httplib::Request &req,
-                                        httplib::Response &res) {
-               setCorsHeaders(req, res);
-               string viewer = req.get_param_value("viewer");
-               if (viewer.empty() || !ericGram->findUser(viewer)) {
-                 setJsonError(res, 401, "Valid viewer is required");
-                 return;
-               }
-               int page = parsePositiveIntOrDefault(req.get_param_value("page"), 1);
-               int limit =
-                   parsePositiveIntOrDefault(req.get_param_value("limit"), 10);
-               if (limit > 50) limit = 50;
-               string q = req.get_param_value("q");
-               res.set_content(ericGram->getPostsPageJSON(page, limit, q, viewer),
-                               "application/json");
-             });
+  server.Get(
+      "/api/posts", [ericGram, setCorsHeaders](const httplib::Request &req,
+                                               httplib::Response &res) {
+        setCorsHeaders(req, res);
+        string viewer = req.get_param_value("viewer");
+        if (viewer.empty() || !ericGram->findUser(viewer)) {
+          setJsonError(res, 401, "Valid viewer is required");
+          return;
+        }
+        int page = parsePositiveIntOrDefault(req.get_param_value("page"), 1);
+        int limit = parsePositiveIntOrDefault(req.get_param_value("limit"), 10);
+        if (limit > 50)
+          limit = 50;
+        string q = req.get_param_value("q");
+        res.set_content(ericGram->getPostsPageJSON(page, limit, q, viewer),
+                        "application/json");
+      });
 
   server.Get("/api/posts/media",
              [ericGram, setCorsHeaders](const httplib::Request &req,
@@ -2894,33 +3276,58 @@ int main() {
                res.set_content(mediaAsset->bytes, mediaAsset->mimeType);
              });
 
-  server.Post("/api/posts/like",
-              [ericGram, setCorsHeaders, authorizeActor](
-                  const httplib::Request &req, httplib::Response &res) {
-                setCorsHeaders(req, res);
-                string postId = getJSONValue(req.body, "postId");
-                string actorUserName = getJSONValue(req.body, "actorUserName");
+  server.Post("/api/posts/like", [ericGram, setCorsHeaders,
+                                  authorizeActor](const httplib::Request &req,
+                                                  httplib::Response &res) {
+    setCorsHeaders(req, res);
+    string postId = getJSONValue(req.body, "postId");
+    string actorUserName = getJSONValue(req.body, "actorUserName");
 
-                if (!authorizeActor(req, res, actorUserName)) {
-                  return;
-                }
+    if (!authorizeActor(req, res, actorUserName)) {
+      return;
+    }
 
-                bool alreadyLiked = false;
-                string errorMessage;
-                int errorStatus = 400;
-                if (!ericGram->likePost(postId, actorUserName, alreadyLiked,
-                                        errorMessage, errorStatus)) {
-                  setJsonError(res, errorStatus, errorMessage);
-                  return;
-                }
+    bool alreadyLiked = false;
+    string errorMessage;
+    int errorStatus = 400;
+    if (!ericGram->likePost(postId, actorUserName, alreadyLiked, errorMessage,
+                            errorStatus)) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
 
-                res.set_content("{\"status\":\"ok\",\"alreadyLiked\":" +
-                                    boolToJSON(alreadyLiked) +
-                                    ",\"post\":" +
-                                    ericGram->getPostJSONById(postId, actorUserName) +
-                                    "}",
-                                "application/json");
-              });
+    res.set_content(
+        "{\"status\":\"ok\",\"alreadyLiked\":" + boolToJSON(alreadyLiked) +
+            ",\"post\":" + ericGram->getPostJSONById(postId, actorUserName) +
+            "}",
+        "application/json");
+  });
+
+  server.Post("/api/posts/save", [ericGram, setCorsHeaders,
+                                  authorizeActor](const httplib::Request &req,
+                                                  httplib::Response &res) {
+    setCorsHeaders(req, res);
+    string postId = getJSONValue(req.body, "postId");
+    string actorUserName = getJSONValue(req.body, "actorUserName");
+
+    if (!authorizeActor(req, res, actorUserName)) {
+      return;
+    }
+
+    bool alreadySaved = false;
+    string errorMessage;
+    int errorStatus = 400;
+    if (!ericGram->savePost(postId, actorUserName, alreadySaved, errorMessage,
+                            errorStatus)) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
+
+    res.set_content(
+        "{\"status\":\"ok\",\"alreadySaved\":" + boolToJSON(alreadySaved) +
+            ",\"user\":" + ericGram->findUser(actorUserName)->toJSON() + "}",
+        "application/json");
+  });
 
   server.Post("/api/posts/comment/add",
               [ericGram, setCorsHeaders, authorizeActor](
@@ -2946,70 +3353,68 @@ int main() {
                   return;
                 }
 
-                res.set_content("{\"status\":\"ok\",\"post\":" +
-                                    ericGram->getPostJSONById(postId, actorUserName) +
-                                    "}",
-                                "application/json");
+                res.set_content(
+                    "{\"status\":\"ok\",\"post\":" +
+                        ericGram->getPostJSONById(postId, actorUserName) + "}",
+                    "application/json");
               });
 
-  server.Post("/api/posts/comment/edit",
-              [ericGram, setCorsHeaders, authorizeActor](
-                  const httplib::Request &req, httplib::Response &res) {
-                setCorsHeaders(req, res);
-                if (!req.is_multipart_form_data()) {
-                  setJsonError(res, 400, "Expected multipart/form-data");
-                  return;
-                }
-                string postId = req.form.get_field("postId");
-                string commentId = req.form.get_field("commentId");
-                string actorUserName = req.form.get_field("actorUserName");
-                string text = req.form.get_field("text");
+  server.Post("/api/posts/comment/edit", [ericGram, setCorsHeaders,
+                                          authorizeActor](
+                                             const httplib::Request &req,
+                                             httplib::Response &res) {
+    setCorsHeaders(req, res);
+    if (!req.is_multipart_form_data()) {
+      setJsonError(res, 400, "Expected multipart/form-data");
+      return;
+    }
+    string postId = req.form.get_field("postId");
+    string commentId = req.form.get_field("commentId");
+    string actorUserName = req.form.get_field("actorUserName");
+    string text = req.form.get_field("text");
 
-                if (!authorizeActor(req, res, actorUserName)) {
-                  return;
-                }
+    if (!authorizeActor(req, res, actorUserName)) {
+      return;
+    }
 
-                string errorMessage;
-                int errorStatus = 400;
-                if (!ericGram->editCommentOnPost(postId, commentId, actorUserName,
-                                                 text, errorMessage,
-                                                 errorStatus)) {
-                  setJsonError(res, errorStatus, errorMessage);
-                  return;
-                }
+    string errorMessage;
+    int errorStatus = 400;
+    if (!ericGram->editCommentOnPost(postId, commentId, actorUserName, text,
+                                     errorMessage, errorStatus)) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
 
-                res.set_content("{\"status\":\"ok\",\"post\":" +
-                                    ericGram->getPostJSONById(postId, actorUserName) +
-                                    "}",
-                                "application/json");
-              });
+    res.set_content("{\"status\":\"ok\",\"post\":" +
+                        ericGram->getPostJSONById(postId, actorUserName) + "}",
+                    "application/json");
+  });
 
-  server.Post("/api/posts/comment/delete",
-              [ericGram, setCorsHeaders, authorizeActor](
-                  const httplib::Request &req, httplib::Response &res) {
-                setCorsHeaders(req, res);
-                string postId = getJSONValue(req.body, "postId");
-                string commentId = getJSONValue(req.body, "commentId");
-                string actorUserName = getJSONValue(req.body, "actorUserName");
+  server.Post("/api/posts/comment/delete", [ericGram, setCorsHeaders,
+                                            authorizeActor](
+                                               const httplib::Request &req,
+                                               httplib::Response &res) {
+    setCorsHeaders(req, res);
+    string postId = getJSONValue(req.body, "postId");
+    string commentId = getJSONValue(req.body, "commentId");
+    string actorUserName = getJSONValue(req.body, "actorUserName");
 
-                if (!authorizeActor(req, res, actorUserName)) {
-                  return;
-                }
+    if (!authorizeActor(req, res, actorUserName)) {
+      return;
+    }
 
-                string errorMessage;
-                int errorStatus = 400;
-                if (!ericGram->deleteCommentFromPost(postId, commentId,
-                                                     actorUserName, errorMessage,
-                                                     errorStatus)) {
-                  setJsonError(res, errorStatus, errorMessage);
-                  return;
-                }
+    string errorMessage;
+    int errorStatus = 400;
+    if (!ericGram->deleteCommentFromPost(postId, commentId, actorUserName,
+                                         errorMessage, errorStatus)) {
+      setJsonError(res, errorStatus, errorMessage);
+      return;
+    }
 
-                res.set_content("{\"status\":\"ok\",\"post\":" +
-                                    ericGram->getPostJSONById(postId, actorUserName) +
-                                    "}",
-                                "application/json");
-              });
+    res.set_content("{\"status\":\"ok\",\"post\":" +
+                        ericGram->getPostJSONById(postId, actorUserName) + "}",
+                    "application/json");
+  });
 
   server.Post("/api/posts/delete",
               [ericGram, setCorsHeaders, authorizeActor](
@@ -3022,8 +3427,8 @@ int main() {
                 }
                 string errorMessage;
                 int errorStatus = 400;
-                if (!ericGram->deletePostById(postId, actorUserName, errorMessage,
-                                              errorStatus)) {
+                if (!ericGram->deletePostById(postId, actorUserName,
+                                              errorMessage, errorStatus)) {
                   setJsonError(res, errorStatus, errorMessage);
                   return;
                 }

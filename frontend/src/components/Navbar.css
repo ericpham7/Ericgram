@@ -8,11 +8,12 @@
   left: 0;
   height: 100vh;
   width: var(--sidebar-width);
-  background: var(--ig-bg);
-  border-right: 1px solid var(--ig-border);
+  background:
+    linear-gradient(180deg, rgba(2, 4, 8, 0.98), rgba(3, 9, 18, 0.98));
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
-  padding: 8px 12px 20px;
+  padding: 22px 12px 18px;
   z-index: 100;
   /* Smooth resize transitions */
   transition: width var(--t-slow), transform var(--t-slow);
@@ -22,8 +23,8 @@
 
 /* Wordmark / Logo */
 .ig-sidebar-logo {
-  padding: 16px 12px 8px;
-  margin-bottom: 4px;
+  padding: 4px 10px 18px;
+  margin-bottom: 18px;
 }
 
 .ig-sidebar-logo-text {
@@ -38,14 +39,25 @@
 }
 
 .ig-sidebar-logo-icon {
-  display: none;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.96;
+}
+
+.ig-sidebar-logo-icon img {
+  width: 28px;
+  height: 28px;
+  display: block;
 }
 
 /* Nav items */
 .ig-sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
   flex: 1;
 }
 
@@ -53,8 +65,8 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 12px;
-  border-radius: var(--r-xl);
+  padding: 10px;
+  border-radius: 14px;
   border: none;
   background: transparent;
   color: var(--ig-text-primary);
@@ -70,7 +82,7 @@
 }
 
 .ig-nav-item:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .ig-nav-item.active {
@@ -78,8 +90,8 @@
 }
 
 .ig-nav-item-icon {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -87,8 +99,8 @@
 }
 
 .ig-nav-item-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   fill: none;
   stroke: var(--ig-text-primary);
   stroke-width: 1.8;
@@ -177,7 +189,6 @@
   flex-direction: column;
   gap: 2px;
   padding-top: 8px;
-  border-top: 1px solid var(--ig-border);
   margin-top: 8px;
 }
 
@@ -601,4 +612,3 @@
     align-items: flex-end;
   }
 }
-

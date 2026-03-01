@@ -1,0 +1,445 @@
+.ig-reels-page {
+	margin-left: var(--sidebar-width);
+	width: calc(100vw - var(--sidebar-width));
+	min-height: 100vh;
+	background:
+		radial-gradient(circle at 50% 50%, rgba(32, 43, 66, 0.5), transparent 28%),
+		linear-gradient(180deg, #02060b 0%, #06111b 100%);
+	box-sizing: border-box;
+	padding: 0;
+	overflow: hidden;
+}
+
+.ig-reels-stage {
+	min-height: 100vh;
+	display: grid;
+	grid-template-columns: minmax(360px, 1fr) minmax(88px, 11vw);
+	align-items: center;
+	gap: 16px;
+	padding: 0 20px;
+}
+
+.ig-reels-side-rail {
+	height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: rgba(255, 255, 255, 0.88);
+}
+
+.ig-reels-side-rail--right {
+	justify-content: flex-end;
+}
+
+.ig-reels-viewer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 0;
+}
+
+.ig-reels-loading {
+	min-height: 100vh;
+	display: grid;
+	place-items: center;
+	color: #dfe5ef;
+	font-size: 15px;
+}
+
+.ig-reel-card {
+	width: min(460px, 100%);
+	height: min(88vh, 920px);
+	border-radius: 16px;
+	overflow: hidden;
+	background: #0b0f15;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.02),
+		0 20px 90px rgba(0, 0, 0, 0.55);
+}
+
+.ig-reel-media {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	background: #000;
+}
+
+.ig-reel-video {
+	width: 100%;
+	height: 100%;
+	display: block;
+	object-fit: cover;
+	background: #000;
+}
+
+.ig-reel-gradient {
+	position: absolute;
+	inset: 0;
+	background:
+		linear-gradient(to top, rgba(0, 0, 0, 0.82), transparent 28%),
+		linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent 12%, transparent 88%, rgba(0, 0, 0, 0.18)),
+		linear-gradient(to bottom, rgba(0, 0, 0, 0.18), transparent 18%);
+	pointer-events: none;
+}
+
+.ig-reel-audio-btn {
+	position: absolute;
+	top: 16px;
+	right: 16px;
+	z-index: 2;
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	border: none;
+	background: rgba(17, 21, 29, 0.72);
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	backdrop-filter: blur(10px);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.ig-reel-audio-btn svg {
+	width: 22px;
+	height: 22px;
+}
+
+.ig-reel-audio-btn.live {
+	background: rgba(12, 110, 63, 0.8);
+}
+
+.ig-reel-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 18px 16px 22px;
+}
+
+.ig-reel-comments-panel {
+	position: absolute;
+	left: 16px;
+	right: 84px;
+	bottom: 148px;
+	z-index: 2;
+	border-radius: 18px;
+	background: rgba(8, 12, 18, 0.9);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	backdrop-filter: blur(14px);
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.ig-reel-comments-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	color: #f5f7fb;
+	font-size: 13px;
+	font-weight: 700;
+}
+
+.ig-reel-comments-header button {
+	border: none;
+	background: transparent;
+	color: #cfd7e4;
+	cursor: pointer;
+	font-size: 16px;
+}
+
+.ig-reel-comments-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	max-height: 148px;
+	overflow-y: auto;
+}
+
+.ig-reel-comments-empty {
+	margin: 0;
+	color: rgba(255, 255, 255, 0.72);
+	font-size: 13px;
+}
+
+.ig-reel-comment-row {
+	display: flex;
+	gap: 6px;
+	font-size: 13px;
+	color: #eef2f7;
+	line-height: 1.35;
+}
+
+.ig-reel-comment-row strong {
+	flex-shrink: 0;
+}
+
+.ig-reel-comment-form {
+	display: flex;
+	gap: 8px;
+}
+
+.ig-reel-comment-form input {
+	flex: 1;
+	min-width: 0;
+	border-radius: 999px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.04);
+	color: #fff;
+	padding: 10px 12px;
+	font-size: 13px;
+}
+
+.ig-reel-comment-form button {
+	border: none;
+	border-radius: 999px;
+	background: #fff;
+	color: #09101a;
+	padding: 0 14px;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.ig-reel-meta {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	color: #f5f7fb;
+}
+
+.ig-reel-user-row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.ig-reel-avatar-btn {
+	border: none;
+	background: transparent;
+	padding: 0;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ig-reel-avatar-image {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	object-fit: cover;
+	display: block;
+	border: 2px solid rgba(255, 255, 255, 0.82);
+}
+
+.ig-reel-avatar {
+	width: 44px;
+	height: 44px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #ff9f0a, #ff2d55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #fff;
+	font-weight: 800;
+	font-size: 15px;
+	flex-shrink: 0;
+	border: 2px solid rgba(255, 255, 255, 0.82);
+}
+
+.ig-reel-user-copy {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ig-reel-user-line {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.ig-reel-user-copy strong {
+	font-size: 15px;
+	line-height: 1.2;
+}
+
+.ig-reel-user-copy span {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.76);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ig-reel-follow-btn {
+	border: 1px solid rgba(255, 255, 255, 0.45);
+	background: rgba(255, 255, 255, 0.08);
+	color: #fff;
+	border-radius: 999px;
+	padding: 6px 12px;
+	font-size: 12px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.ig-reel-follow-btn.active {
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.ig-reel-caption {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.45;
+	max-width: 85%;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.ig-reel-status-message {
+	font-size: 12px;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.78);
+}
+
+.ig-reel-actions {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	color: #f5f7fb;
+	font-size: 13px;
+	font-weight: 700;
+	padding-bottom: 6px;
+}
+
+.ig-reel-action-btn {
+	width: 46px;
+	height: 46px;
+	border-radius: 50%;
+	border: none;
+	background: rgba(17, 21, 29, 0.7);
+	backdrop-filter: blur(12px);
+	color: #fff;
+	font-size: 21px;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.ig-reel-action-btn svg {
+	width: 22px;
+	height: 22px;
+}
+
+.ig-reel-action-btn.active {
+	background: rgba(255, 255, 255, 0.18);
+	color: #fff2f3;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.ig-reels-nav {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.ig-reels-nav-btn {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	border: none;
+	background: rgba(255, 255, 255, 0.08);
+	color: #fff;
+	font-size: 32px;
+	line-height: 1;
+	cursor: pointer;
+	backdrop-filter: blur(8px);
+}
+
+.ig-reels-index {
+	position: absolute;
+	bottom: 28px;
+	right: 28px;
+	color: rgba(255, 255, 255, 0.6);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+}
+
+.ig-reels-side-rail--right {
+	position: relative;
+}
+
+@media (max-width: 1264px) {
+	.ig-reels-page {
+		margin-left: var(--sidebar-collapsed-width);
+		width: calc(100vw - var(--sidebar-collapsed-width));
+	}
+
+	.ig-reels-stage {
+		grid-template-columns: minmax(340px, 1fr) 82px;
+		padding: 0 14px;
+	}
+}
+
+@media (max-width: 768px) {
+	.ig-reels-page {
+		margin-left: 0;
+		width: 100vw;
+	}
+
+	.ig-reels-stage {
+		grid-template-columns: 1fr;
+		padding: 0;
+	}
+
+	.ig-reels-side-rail--right {
+		position: absolute;
+		right: 10px;
+		top: 0;
+		bottom: 0;
+		width: 72px;
+		pointer-events: none;
+	}
+
+	.ig-reels-nav,
+	.ig-reels-index {
+		pointer-events: auto;
+	}
+
+	.ig-reels-viewer {
+		width: 100%;
+	}
+
+	.ig-reel-card {
+		width: 100vw;
+		height: 100vh;
+		border-radius: 0;
+		border: none;
+		box-shadow: none;
+	}
+
+	.ig-reel-caption {
+		max-width: 100%;
+	}
+
+	.ig-reel-comments-panel {
+		left: 12px;
+		right: 76px;
+		bottom: 164px;
+	}
+}

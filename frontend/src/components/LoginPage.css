@@ -6,7 +6,6 @@
   min-height: 100vh;
   display: flex;
   align-items: stretch;
-  justify-content: center;
   position: relative;
   overflow: hidden;
   background: radial-gradient(circle at 20% 20%, #0d1d33 0%, #070d17 50%, #05080f 100%);
@@ -18,10 +17,10 @@
 
 .login-layout {
   width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  /* ensure layout always fills viewport */
   overflow: hidden;
 }
 
@@ -151,8 +150,77 @@
 
 .login-logo-section {
   text-align: left;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
+
+/* ── Demo CTA block ─────────────────────────────────── */
+.demo-cta-block {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.demo-btn {
+  width: 100%;
+  padding: 15px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045, #833ab4);
+  background-size: 300% 300%;
+  animation: gradientShift 4s ease infinite;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(131, 58, 180, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.demo-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(131, 58, 180, 0.6);
+}
+
+.demo-btn:active {
+  transform: translateY(0);
+}
+
+.demo-btn:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.demo-spinner {
+  border-color: rgba(255,255,255,0.3) !important;
+  border-top-color: #fff !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.demo-cta-hint {
+  font-size: 0.75rem;
+  color: rgba(187, 203, 226, 0.5);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 
 .login-logo {
   width: 60px;

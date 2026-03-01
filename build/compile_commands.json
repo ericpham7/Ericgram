@@ -1,7 +1,7 @@
 [
 {
   "directory": "/Users/ericpham/Ericgram/Ericgram/build",
-  "command": "/usr/bin/clang++ -g -std=gnu++20 -arch arm64 -o CMakeFiles/my_app.dir/main.cpp.o -c /Users/ericpham/Ericgram/Ericgram/main.cpp",
+  "command": "/usr/bin/clang++ -I/Users/ericpham/Ericgram/Ericgram/include -isystem /opt/homebrew/opt/openssl/include -g -std=gnu++20 -arch arm64 -o CMakeFiles/my_app.dir/main.cpp.o -c /Users/ericpham/Ericgram/Ericgram/main.cpp",
   "file": "/Users/ericpham/Ericgram/Ericgram/main.cpp",
   "output": "/Users/ericpham/Ericgram/Ericgram/build/CMakeFiles/my_app.dir/main.cpp.o"
 }

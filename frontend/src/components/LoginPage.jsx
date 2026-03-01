@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
 import logo from "../assets/logo.svg";
 import "./LoginPage.css";
-import { loginUser, signupUser } from "../api";
+import { loginUser, loginWithGoogle, signupUser } from "../api";
+import { seedDemoData } from "../seedDemoData";
 
 const HERO_GIF_URLS = [
-  "/assets/hero-badbunny-superbowl.gif",
   "/assets/hero-yogabbagabba-coachella.gif",
   "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif",
   "https://media.giphy.com/media/26tn33aiTi1jkl6H6/giphy.gif",
   "/assets/hero-terrydavis-templeos.gif",
   "/assets/hero-youtube-clip.gif",
+  "https://media.giphy.com/media/l0HlBO7eyXzSZkJri/giphy.gif",
 ];
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[+\d\s().-]+$/;
@@ -56,6 +57,14 @@ function parseContactInput(rawValue) {
   }
 
   return { type: "phone", phoneDigits };
+}
+
+function isInvalidCredentialsError(error) {
+  return error?.status === 401;
+}
+
+function isExistingDemoAccountError(error) {
+  return error?.status === 409;
 }
 
 function GoogleSignInButton({ disabled, onGoogleUser, onError }) {
@@ -131,6 +140,7 @@ export default function LoginPage({ onLogin }) {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
   const hasGoogleClientId = Boolean(
@@ -190,32 +200,87 @@ export default function LoginPage({ onLogin }) {
     }
   };
 
-  const handleGoogleUser = async (googleUser) => {
-    const googlePassword = `google-oauth-${googleUser.sub}`;
-    const googleEmail = String(googleUser.email || "").trim().toLowerCase();
+  // ── Demo login: prefer the backend's seeded demo user, then fall back to
+  // creating the frontend-only demo account if needed. ──────────────────────
+  const SEEDED_DEMO_EMAIL = "averagejoe@emaill.com";
+  const SEEDED_DEMO_PASSWORD = "1234";
+  const DEMO_EMAIL = "demo@ericgram.local";
+  const DEMO_PASSWORD = "EricgramDemo2024!";
 
+  const handleDemoLogin = async () => {
+    setError("");
+    setDemoLoading(true);
     try {
-      const loggedInUser = await loginUser(googleEmail, googlePassword);
-      onLogin(loggedInUser);
-      return;
-    } catch {
-      const safeUserNameBase =
-        googleEmail.split("@")[0]?.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 16) ||
-        `user${Date.now()}`;
-      const generatedUserName = `${safeUserNameBase}${Math.floor(Math.random() * 10000)}`;
+      try {
+        // The C++ backend already seeds this account on startup, so this avoids
+        // relying on signup just to enter the demo.
+        const seededDemoUser = await loginUser(SEEDED_DEMO_EMAIL, SEEDED_DEMO_PASSWORD);
+        await seedDemoData();
+        onLogin(seededDemoUser);
+        return;
+      } catch (err) {
+        if (!isInvalidCredentialsError(err)) {
+          throw err;
+        }
+      }
 
-      const createdUser = await signupUser({
-        userName: generatedUserName,
-        name: googleUser.name || googleEmail,
-        phoneNumber: fallbackPhoneForEmail(googleEmail),
-        email: googleEmail,
-        password: googlePassword,
-        instagramHandle: "",
-        profilePic: googleUser.picture || "",
-      });
+      try {
+        const existingDemoUser = await loginUser(DEMO_EMAIL, DEMO_PASSWORD);
+        onLogin(existingDemoUser);
+        return;
+      } catch (err) {
+        if (!isInvalidCredentialsError(err)) {
+          throw err;
+        }
+      }
 
-      onLogin(createdUser);
+      try {
+        await signupUser({
+          userName: "demo_viewer",
+          name: "Demo User",
+          phoneNumber: "5550000000",
+          email: DEMO_EMAIL,
+          password: DEMO_PASSWORD,
+          instagramHandle: "",
+          profilePic: "",
+        });
+      } catch (err) {
+        if (!isExistingDemoAccountError(err)) {
+          throw err;
+        }
+      }
+
+      const user = await loginUser(DEMO_EMAIL, DEMO_PASSWORD);
+      onLogin(user);
+    } catch (err) {
+      setError("Demo login failed: " + (err.message || "please try again."));
+    } finally {
+      setDemoLoading(false);
     }
+  };
+
+  const handleGoogleUser = async (googleUser) => {
+    const googleEmail = String(googleUser.email || "").trim().toLowerCase();
+    if (!googleEmail) {
+      throw new Error("Google account did not provide an email");
+    }
+    if (googleUser.email_verified === false) {
+      throw new Error("Google account email is not verified");
+    }
+
+    const safeUserNameBase =
+      googleEmail.split("@")[0]?.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 16) ||
+      `user${Date.now()}`;
+    const suggestedUserName = `${safeUserNameBase}${Math.floor(Math.random() * 10000)}`;
+
+    const authPayload = await loginWithGoogle({
+      email: googleEmail,
+      name: googleUser.name || googleEmail,
+      profilePic: googleUser.picture || "",
+      suggestedUserName,
+    });
+
+    onLogin(authPayload);
   };
 
   return (
@@ -262,6 +327,34 @@ export default function LoginPage({ onLogin }) {
                 {isSignupMode ? "Create your account" : "Eric's Instagram Emulator"}
               </p>
             </div>
+
+            {/* ── Demo CTA — shown only on the login view ── */}
+            {!isSignupMode && (
+              <div className="demo-cta-block">
+                <button
+                  type="button"
+                  id="demo-login-btn"
+                  className={`demo-btn ${demoLoading ? "demo-btn--loading" : ""}`}
+                  onClick={handleDemoLogin}
+                  disabled={demoLoading || loading}
+                >
+                  {demoLoading ? (
+                    <><div className="spinner demo-spinner" /> Signing in…</>
+                  ) : (
+                    <>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/>
+                      </svg>
+                      Try Demo — one click, no sign‑up
+                    </>
+                  )}
+                </button>
+                <p className="demo-cta-hint">
+                  Instant access &middot; pre-loaded portfolio data
+                </p>
+              </div>
+            )}
 
             <form
               onSubmit={handleSubmit}

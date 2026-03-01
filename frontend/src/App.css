@@ -18,3 +18,82 @@
 .app-route-tabs {
   display: none;
 }
+
+/* Generic placeholder pages (Notifications, etc.) */
+.ig-placeholder-page {
+  margin-left: var(--sidebar-width);
+  width: calc(100vw - var(--sidebar-width));
+  min-height: 100vh;
+  background: var(--ig-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 4vw, 56px);
+  box-sizing: border-box;
+  transition: margin-left var(--t-slow);
+}
+
+.ig-placeholder-card {
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(28px, 4vw, 40px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top, rgba(0, 148, 255, 0.1), transparent 46%),
+    linear-gradient(180deg, rgba(10, 14, 22, 0.98), rgba(6, 8, 14, 0.98));
+  box-shadow: 0 28px 64px rgba(0, 0, 0, 0.34);
+  text-align: center;
+  color: var(--ig-text-secondary);
+}
+
+.ig-placeholder-page svg { color: var(--ig-text-tertiary); }
+.ig-placeholder-page h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--ig-text-primary);
+}
+.ig-placeholder-page p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ig-placeholder-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ig-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 1264px) {
+  .ig-placeholder-page {
+    margin-left: var(--sidebar-collapsed-width);
+    width: calc(100vw - var(--sidebar-collapsed-width));
+  }
+}
+
+@media (max-width: 768px) {
+  .ig-placeholder-page {
+    margin-left: 0;
+    width: 100vw;
+    min-height: calc(100vh - 56px);
+    padding: 24px 16px 88px;
+  }
+
+  .ig-placeholder-card {
+    border-radius: 24px;
+  }
+}

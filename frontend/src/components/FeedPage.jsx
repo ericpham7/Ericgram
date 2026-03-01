@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { fetchAllUsers, fetchPosts } from "../api";
 import InstagramEditProfileModal from "./InstagramEditProfileModal";
+import { DEFAULT_PROFILE_PIC } from "../utils/defaultProfilePic";
+import { getUserProfilePic } from "../utils/userProfilePic";
+import { navigateToProfile } from "../utils/profileNavigation";
 import "./FeedPage.css";
 
 function normalizeWebsiteUrl(value) {
@@ -12,6 +16,7 @@ function normalizeWebsiteUrl(value) {
 }
 
 export default function FeedPage({ currentUser, searchQuery, onUpdateUser }) {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +35,7 @@ export default function FeedPage({ currentUser, searchQuery, onUpdateUser }) {
         fetchAllUsers(),
         fetchPosts(currentUser?.userName, 1, 50, searchQuery || ""),
       ]);
-      setUsers(usersData);
+      setUsers(usersData.users || []);
       setPosts(Array.isArray(postsData?.items) ? postsData.items : []);
     } catch {
       setError(
@@ -41,7 +46,7 @@ export default function FeedPage({ currentUser, searchQuery, onUpdateUser }) {
     }
   };
 
-  const profileImage = currentUser?.profilePic || "/assets/ebkjaaybo.jpg";
+  const profileImage = getUserProfilePic(currentUser) || DEFAULT_PROFILE_PIC;
   const userName = currentUser?.userName || "profile";
   const fullName = currentUser?.name || "EricGram User";
   const profilePosts = posts.filter((post) => post.authorUserName === userName);
@@ -74,11 +79,18 @@ export default function FeedPage({ currentUser, searchQuery, onUpdateUser }) {
     <div className="feed-page" id="feed-page">
       <section className="profile-shell">
         <header className="profile-header">
-          <div className="profile-avatar-wrap">
+          <button
+            type="button"
+            className="profile-avatar-wrap"
+            onClick={() =>
+              navigateToProfile(navigate, currentUser?.userName, currentUser?.userName)
+            }
+            aria-label={`Open ${userName}'s profile`}
+          >
             {profileImage ?
               <img src={profileImage} alt={fullName} className="profile-avatar" />
             : <div className="profile-avatar fallback">{initials || "EG"}</div>}
-          </div>
+          </button>
 
           <div className="profile-meta">
             <div className="profile-top-line">

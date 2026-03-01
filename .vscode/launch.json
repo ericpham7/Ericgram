@@ -2,13 +2,14 @@
   "version": "0.2.0",
   "configurations": [
 
+
     {
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
       "request": "launch",
       "args": [],
-      "cwd": "/Users/ericpham/socialMediaProj2",
-      "program": "/Users/ericpham/socialMediaProj2/build/Debug/outDebug"
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/build/Debug/outDebug"
     }
   ]
 }

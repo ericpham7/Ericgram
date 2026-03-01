@@ -7,6 +7,13 @@ import { defineConfig } from "vite";
 // Without this, Vite wouldn't know how to process .jsx files (React's HTML-in-JavaScript)
 import react from "@vitejs/plugin-react";
 
+const apiProxy = {
+  "/api": {
+    target: "http://127.0.0.1:8080",
+    changeOrigin: true,
+  },
+};
+
 // "export default" = makes this the main thing other files get when they import this file
 // defineConfig() = a Vite helper that gives you autocomplete and type-checking for the config
 export default defineConfig({
@@ -16,23 +23,23 @@ export default defineConfig({
 
   // server: configuration for the Vite development server (what runs when you do "npm run dev")
   server: {
+    // Listen on all network interfaces so other devices on the LAN can reach it.
+    host: "0.0.0.0",
+
     // port: which port number to run on
     // You access the app at http://localhost:5176
     port: 5176,
 
     // proxy: URL forwarding rules
     // This is the BRIDGE between your React frontend and C++ backend
-    proxy: {
-      // "/api" = any request whose URL starts with /api will be forwarded
-      "/api": {
-        // target: WHERE to forward those requests to
-        // Your C++ server listens on port 8080, so requests go there
-        target: "http://localhost:8080",
+    proxy: apiProxy,
+  },
 
-        // changeOrigin: true = modifies the request's "Host" header to match the target
-        // This makes the C++ server think the request came directly to it
-        changeOrigin: true,
-      },
-    },
+  // Keep preview behavior aligned with `npm run dev` so auth and other API calls
+  // still reach the backend when testing the production build locally.
+  preview: {
+    host: "0.0.0.0",
+    port: 5176,
+    proxy: apiProxy,
   },
 });
