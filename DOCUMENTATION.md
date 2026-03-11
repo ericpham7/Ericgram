@@ -245,7 +245,7 @@ Every component references these variables (e.g., `var(--bg-card)`) so the entir
 
 ```
   Browser (React App)                    C++ Server
-  localhost:5173                         localhost:8080
+  localhost:5176                         localhost:8080
   ─────────────────                      ──────────────
        │                                       │
        │  1. User clicks "Sign In"             │
@@ -268,7 +268,7 @@ Every component references these variables (e.g., `var(--bg-card)`) so the entir
 ```
 
 ### The Proxy (vite.config.js)
-During development, the React app runs on port `5173` and the C++ server runs on port `8080`. Normally, the browser would block requests between these two ports (CORS).
+During development, the React app runs on port `5176` and the C++ server runs on port `8080`. Normally, the browser would block requests between these two ports (CORS).
 
 The Vite proxy solves this elegantly:
 ```javascript
@@ -301,11 +301,12 @@ Keep this terminal open — the server must stay running.
 ```bash
 cd socialMediaProj2/frontend
 npm run dev
-# Output: "Local: http://localhost:5173/"
+# Output: "Local: http://localhost:5176/"
+# Output: "Network: http://<your-computer-ip>:5176/"
 ```
 
 ### Step 3: Open in browser
-Go to **http://localhost:5173** and log in with:
+Go to **http://localhost:5176** on your computer, or **http://<your-computer-ip>:5176** from another device on the same network, then log in with:
 - **Email:** `ERICPHAM0902@GMAIL.COM`
 - **Password:** `password123`
 
@@ -320,7 +321,7 @@ Here is exactly what happens when you type in credentials and press "Sign In":
 3. **You click "Sign In"** → triggers `handleSubmit()` in `LoginPage.jsx`
 4. `handleSubmit()` calls `loginUser(email, password)` from `api.js`
 5. `api.js` uses `fetch()` to send a **POST request** to `/api/login` with the email and password as JSON
-6. **Vite proxy** forwards the request from `localhost:5173` → `localhost:8080`
+6. **Vite proxy** forwards the request from `localhost:5176` → `localhost:8080`
 7. **C++ server** receives the request in the `server.Post("/api/login", ...)` handler
 8. It uses `getJSONValue()` to extract the email and password from the request body
 9. It calls `network->findUserByEmail(email)` to look up the user
@@ -351,7 +352,7 @@ Here is exactly what happens when you type in credentials and press "Sign In":
 | File | Purpose |
 |------|---------|
 | `index.html` | Single HTML page with Inter font, meta tags, and the `<div id="root">` that React mounts into |
-| `vite.config.js` | Dev server config: port 5173, API proxy to port 8080 |
+| `vite.config.js` | Dev server config: host 0.0.0.0, port 5176, API proxy to port 8080 |
 | `src/main.jsx` | Entry point — renders `<App />` into the DOM |
 | `src/App.jsx` | Root component — manages login state, shows Login or Feed |
 | `src/App.css` | Minimal root styles |

@@ -16,6 +16,10 @@ export default defineConfig({
 
   // server: configuration for the Vite development server (what runs when you do "npm run dev")
   server: {
+    // host: bind to all local interfaces so phones/laptops on the same LAN can access the app
+    // Example: http://<your-computer-ip>:5176
+    host: "0.0.0.0",
+
     // port: which port number to run on
     // You access the app at http://localhost:5176
     port: 5176,
