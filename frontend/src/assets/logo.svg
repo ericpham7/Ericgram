@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 160" role="img" aria-label="EricGram logo">
+  <defs>
+    <linearGradient id="ig-grad" x1="10%" y1="95%" x2="90%" y2="5%">
+      <stop offset="0%" stop-color="#feda75" />
+      <stop offset="28%" stop-color="#fa7e1e" />
+      <stop offset="52%" stop-color="#d62976" />
+      <stop offset="76%" stop-color="#962fbf" />
+      <stop offset="100%" stop-color="#4f5bd5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Transparent background: no backdrop rectangle -->
+  <rect x="16" y="8" width="96" height="96" rx="30" fill="url(#ig-grad)" />
+  <rect x="31" y="23" width="66" height="66" rx="20" fill="none" stroke="#ffffff" stroke-width="7" />
+  <circle cx="64" cy="56" r="16" fill="none" stroke="#ffffff" stroke-width="7" />
+  <circle cx="87" cy="33" r="5" fill="#ffffff" />
+
+  <text
+    x="64"
+    y="140"
+    text-anchor="middle"
+    fill="url(#ig-grad)"
+    font-size="18"
+    font-family="'Trebuchet MS', 'Avenir Next', 'Segoe UI', sans-serif"
+    font-weight="700"
+    letter-spacing="0.2"
+  >
+    EricGram
+  </text>
+</svg>

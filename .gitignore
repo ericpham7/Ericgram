@@ -1,0 +1,49 @@
+# ─── Build artifacts ─────────────────────────────────────────
+build/
+out/
+*.o
+*.a
+*.dylib
+*.so
+my_app
+
+# ─── Node / Frontend ─────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env.local
+
+# ─── macOS ───────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Logs ────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── SQLite databases ────────────────────────────────────────
+*.sqlite3
+*.db
+
+# ─── CMake generated ─────────────────────────────────────────
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+build/.cmake/
+build/CMakeFiles/
+build/backend_output.log
+
+# ─── Editor / IDE ────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.swp
+*.sln
+
+# ─── Cache ───────────────────────────────────────────────────
+.cache/

@@ -1,0 +1,9 @@
+.git
+.gitignore
+.DS_Store
+.cache
+.vscode
+build
+out
+frontend/node_modules
+frontend/dist
